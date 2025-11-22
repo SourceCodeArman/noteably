@@ -1,0 +1,615 @@
+---
+description: API design guidelines and RESTful conventions for backend endpoints
+globs: "backend/apps/**/*.py"
+alwaysApply: true
+---
+# API Design
+
+Follow RESTful naming, plural resources, consistent JSON, JWT auth, permissions, input validation, rate limits, and versioning.
+
+## RESTful Naming Conventions
+
+### Endpoint Structure
+Use consistent, RESTful naming patterns:
+
+```python
+# ✅ Good RESTful endpoints
+# GET    /api/v1/sources/                # List source contents
+# POST   /api/v1/sources/                # Create source content
+# GET    /api/v1/sources/{id}/           # Get specific source content
+# PUT    /api/v1/sources/{id}/           # Update source content
+# DELETE /api/v1/sources/{id}/           # Delete source content
+# POST   /api/v1/sources/{id}/transcribe/  # Start transcription
+# GET    /api/v1/transcriptions/         # List transcriptions
+# POST   /api/v1/transcriptions/{id}/generate/  # Generate study materials
+# GET    /api/v1/generated-content/      # List generated content
+# GET    /api/v1/summaries/              # List summaries
+# GET    /api/v1/flashcards/             # List flashcards
+# GET    /api/v1/quizzes/                # List quizzes
+
+# ✅ Good URL patterns in urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from . import views
+
+router = DefaultRouter()
+router.register(r'sources', views.SourceContentViewSet)
+router.register(r'transcriptions', views.TranscriptionViewSet)
+router.register(r'generated-content', views.GeneratedContentViewSet)
+router.register(r'summaries', views.SummaryViewSet)
+router.register(r'flashcards', views.FlashcardViewSet)
+router.register(r'quizzes', views.QuizViewSet)
+
+app_name = 'api'
+urlpatterns = [
+    path('', include(router.urls)),
+    path('sources/<int:source_id>/transcribe/', views.start_transcription, name='start-transcription'),
+    path('transcriptions/<int:transcription_id>/generate/', views.generate_content, name='generate-content'),
+    path('generated-content/<int:content_id>/refine/', views.refine_content, name='refine-content'),
+]
+
+# ❌ Bad non-RESTful endpoints
+# GET    /api/v1/getSources/
+# POST   /api/v1/createSource/
+# GET    /api/v1/sourceDetails/{id}/
+# POST   /api/v1/deleteSource/
+```
+
+### Resource Naming
+Use plural nouns for collections and be consistent:
+
+```python
+# ✅ Good resource naming
+/api/v1/sources/              # Collection of source contents
+/api/v1/transcriptions/       # Collection of transcriptions
+/api/v1/generated-content/    # Collection of generated content (kebab-case for multi-word)
+/api/v1/summaries/            # Collection of summaries
+/api/v1/flashcards/           # Collection of flashcards
+/api/v1/quizzes/              # Collection of quizzes
+
+# ❌ Bad resource naming
+/api/v1/source/               # Should be plural
+/api/v1/transcription/         # Should be plural
+/api/v1/generatedContent/     # Should be kebab-case
+/api/v1/summary/              # Should be plural
+/api/v1/flashcard/            # Should be plural
+/api/v1/quiz/                 # Should be plural
+```
+
+## Response Format Standards
+
+### Consistent JSON Structure
+Always return consistent JSON responses:
+
+```python
+# ✅ Good consistent response format
+from rest_framework.response import Response
+from rest_framework import status
+
+def create_source_content(request):
+    try:
+        serializer = SourceContentCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            source_content = serializer.save(user=request.user)
+            return Response({
+                'status': 'success',
+                'data': {
+                    'id': source_content.id,
+                    'title': source_content.title,
+                    'source_type': source_content.source_type,
+                    'status': source_content.status,
+                    'created_at': source_content.created_at
+                },
+                'message': 'Source content created successfully'
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                'status': 'error',
+                'data': serializer.errors,
+                'message': 'Validation failed'
+            }, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'data': None,
+            'message': 'An unexpected error occurred'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ✅ Good list response format
+def list_source_contents(request):
+    source_contents = SourceContent.objects.for_user(request.user)
+    serializer = SourceContentListSerializer(source_contents, many=True)
+    
+    return Response({
+        'status': 'success',
+        'data': {
+            'source_contents': serializer.data,
+            'count': len(serializer.data),
+            'page': 1,
+            'total_pages': 1
+        },
+        'message': 'Source contents retrieved successfully'
+    })
+
+# ❌ Bad inconsistent response format
+def create_summary_bad(request):
+    summary = Summary.objects.create(...)
+    return Response({
+        'summary': summary,  # Inconsistent structure
+        'success': True       # Different field names
+    })
+```
+
+### Error Response Format
+Use consistent error response structure:
+
+```python
+# ✅ Good error response format
+from rest_framework.views import exception_handler
+from rest_framework.response import Response
+
+def custom_exception_handler(exc, context):
+    response = exception_handler(exc, context)
+    
+    if response is not None:
+        custom_response_data = {
+            'status': 'error',
+            'data': None,
+            'message': 'An error occurred',
+            'errors': response.data if isinstance(response.data, dict) else {'detail': response.data},
+            'code': response.status_code
+        }
+        response.data = custom_response_data
+    
+    return response
+
+# ✅ Good validation error format
+class SourceContentCreateSerializer(serializers.ModelSerializer):
+    def validate_title(self, value):
+        if len(value) < 2:
+            raise serializers.ValidationError({
+                'title': ['Title must be at least 2 characters long']
+            })
+        return value
+    
+    def validate_source_type(self, value):
+        valid_types = ['youtube', 'file', 'text']
+        if value not in valid_types:
+            raise serializers.ValidationError({
+                'source_type': [f'Source type must be one of {valid_types}']
+            })
+        return value
+    
+    def validate(self, data):
+        # Ensure file_reference belongs to user
+        file_reference = data.get('file_reference')
+        if file_reference and file_reference.user != self.context['request'].user:
+            raise serializers.ValidationError({
+                'non_field_errors': ['File reference does not belong to user']
+            })
+        
+        # Validate source type specific requirements
+        source_type = data.get('source_type')
+        if source_type == 'youtube' and not data.get('source_url'):
+            raise serializers.ValidationError({
+                'source_url': ['YouTube URL is required for youtube source type']
+            })
+        
+        if source_type == 'text' and not data.get('raw_text'):
+            raise serializers.ValidationError({
+                'raw_text': ['Text content is required for text source type']
+            })
+        
+        return data
+```
+
+## Authentication and Authorization
+
+### JWT Authentication
+Implement consistent JWT authentication patterns:
+
+```python
+# ✅ Good JWT authentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+class SourceContentViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return SourceContent.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+# ✅ Good source content ownership validation
+def create_source_content_with_file(request):
+    file_reference_id = request.data.get('file_reference')
+    
+    if not file_reference_id:
+        return Response({
+            'status': 'error',
+            'data': None,
+            'message': 'File reference ID required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Verify file reference belongs to user
+    try:
+        file_reference = FileReference.objects.get(id=file_reference_id, user=request.user)
+    except FileReference.DoesNotExist:
+        return Response({
+            'status': 'error',
+            'data': None,
+            'message': 'File reference not found or does not belong to user'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # Create source content
+    source_content = SourceContent.objects.create(
+        user=request.user,
+        file_reference=file_reference,
+        title=request.data.get('title', 'Untitled'),
+        source_type='file',
+        status='pending'
+    )
+    
+    return Response({
+        'status': 'success',
+        'data': {'id': source_content.id},
+        'message': 'Source content created successfully'
+    })
+```
+
+### Permission Classes
+Create reusable permission classes:
+
+```python
+# ✅ Good permission classes
+from rest_framework.permissions import BasePermission
+
+class IsOwnerOrReadOnly(BasePermission):
+    """
+    Custom permission to only allow owners to edit their objects.
+    """
+    def has_object_permission(self, request, view, obj):
+        # Read permissions for any request
+        if request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return True
+        
+        # Write permissions only to the owner
+        return obj.user == request.user
+
+class IsSourceContentOwner(BasePermission):
+    """
+    Allow only the owner of the source content to access it.
+    """
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        
+        # For source content-specific views, check ownership
+        if hasattr(view, 'get_object'):
+            source_content = view.get_object()
+            return source_content.user == request.user
+        
+        return True
+
+# Usage in views
+class SourceContentViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsOwnerOrReadOnly]
+    
+    def get_permissions(self):
+        if self.action == 'create':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsOwnerOrReadOnly]
+        
+        return [permission() for permission in permission_classes]
+```
+
+## Input Validation
+
+### Request Validation
+Implement comprehensive input validation:
+
+```python
+# ✅ Good input validation
+class SourceContentUploadSerializer(serializers.Serializer):
+    title = serializers.CharField(required=False, max_length=200)
+    source_type = serializers.CharField(required=True)
+    source_url = serializers.URLField(required=False)
+    file_reference = serializers.IntegerField(required=False)
+    raw_text = serializers.CharField(required=False)
+    
+    def validate_source_type(self, value):
+        valid_types = ['youtube', 'file', 'text']
+        if value not in valid_types:
+            raise serializers.ValidationError(f'Source type must be one of {valid_types}')
+        return value
+    
+    def validate(self, data):
+        source_type = data.get('source_type')
+        
+        if source_type == 'youtube' and not data.get('source_url'):
+            raise serializers.ValidationError('YouTube URL is required for youtube source type')
+        
+        if source_type == 'file' and not data.get('file_reference'):
+            raise serializers.ValidationError('File reference is required for file source type')
+        
+        if source_type == 'text' and not data.get('raw_text'):
+            raise serializers.ValidationError('Text content is required for text source type')
+        
+        return data
+
+# ✅ Good view validation
+class SourceContentUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = SourceContentUploadSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response({
+                'status': 'error',
+                'data': serializer.errors,
+                'message': 'Validation failed'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Process validated data
+        source_type = serializer.validated_data['source_type']
+        title = serializer.validated_data.get('title', 'Untitled')
+        
+        # Create source content
+        source_content = SourceContent.objects.create(
+            user=request.user,
+            title=title,
+            source_type=source_type,
+            source_url=serializer.validated_data.get('source_url'),
+            file_reference_id=serializer.validated_data.get('file_reference'),
+            raw_text=serializer.validated_data.get('raw_text'),
+            status='pending'
+        )
+        
+        # Start transcription if needed
+        if source_type in ['youtube', 'file']:
+            transcribe_content_task.delay(source_content.id)
+        
+        return Response({
+            'status': 'success',
+            'data': {
+                'id': source_content.id,
+                'title': source_content.title,
+                'source_type': source_content.source_type,
+                'status': source_content.status
+            },
+            'message': 'Source content uploaded successfully'
+        }, status=status.HTTP_201_CREATED)
+```
+
+## Rate Limiting and Usage Limits
+
+### Usage Limit Enforcement
+Implement usage limits for different user tiers:
+
+```python
+# ✅ Good usage limit enforcement
+from django.core.exceptions import PermissionDenied
+
+class UsageLimitMixin:
+    def check_usage_limits(self, request, operation_type):
+        if request.user.is_authenticated:
+            user = request.user
+            subscription = user.subscription
+        else:
+            # Guest limits
+            guest_session_id = request.data.get('guest_session_id')
+            if not guest_session_id:
+                raise PermissionDenied('Guest session required')
+            
+            # Check guest usage
+            guest_usage = get_guest_usage(guest_session_id)
+            if guest_usage['summaries'] >= 3:  # Guest limit
+                raise PermissionDenied('Guest usage limit exceeded')
+            return
+        
+        # Check subscription limits
+        if operation_type == 'source_upload':
+            if subscription.tier == 'free':
+                if user.source_contents.count() >= 10:
+                    raise PermissionDenied('Free tier limit: 10 source contents')
+            elif subscription.tier == 'pro':
+                if user.source_contents.count() >= 100:
+                    raise PermissionDenied('Pro tier limit: 100 source contents')
+        
+        if operation_type == 'content_generation':
+            if subscription.tier == 'free':
+                # Check daily generation limit
+                today_generations = GeneratedContent.objects.filter(
+                    user=user,
+                    created_at__date=timezone.now().date()
+                ).count()
+                if today_generations >= 5:
+                    raise PermissionDenied('Free tier limit: 5 generations per day')
+
+class SourceContentViewSet(UsageLimitMixin, viewsets.ModelViewSet):
+    def create(self, request, *args, **kwargs):
+        # Check usage limits before creation
+        self.check_usage_limits(request, 'source_upload')
+        
+        return super().create(request, *args, **kwargs)
+```
+
+## WebSocket Integration
+
+### WebSocket Event Structure
+Use consistent WebSocket event patterns:
+
+```python
+# ✅ Good WebSocket event structure
+from channels.generic.websocket import AsyncWebsocketConsumer
+import json
+
+class TranscriptionStatusConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.transcription_id = self.scope['url_route']['kwargs']['transcription_id']
+        self.group_name = f'transcription_{self.transcription_id}'
+        
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        
+        await self.accept()
+        
+        # Send initial status
+        await self.send_status_update('connected')
+    
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+    
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        
+        if data['type'] == 'ping':
+            await self.send(text_data=json.dumps({
+                'type': 'pong',
+                'timestamp': timezone.now().isoformat()
+            }))
+    
+    async def send_status_update(self, status):
+        await self.send(text_data=json.dumps({
+            'type': 'status_update',
+            'status': status,
+            'timestamp': timezone.now().isoformat()
+        }))
+    
+    async def send_sync_progress(self, progress):
+        await self.send(text_data=json.dumps({
+            'type': 'sync_progress',
+            'progress': progress,
+            'timestamp': timezone.now().isoformat()
+        }))
+    
+    async def send_sync_complete(self, sync_data):
+        await self.send(text_data=json.dumps({
+            'type': 'sync_complete',
+            'data': sync_data,
+            'timestamp': timezone.now().isoformat()
+        }))
+```
+
+## API Versioning
+
+### Version Management
+Implement proper API versioning:
+
+```python
+# ✅ Good API versioning
+# config/urls.py
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/v1/', include('apps.api.urls')),
+    path('api/v2/', include('apps.api.v2.urls')),  # Future version
+]
+
+# ✅ Good version-specific serializers
+class SourceContentV1Serializer(serializers.ModelSerializer):
+    class Meta:
+        model = SourceContent
+        fields = ['id', 'title', 'source_type', 'status', 'created_at']
+
+class SourceContentV2Serializer(serializers.ModelSerializer):
+    # Enhanced version with additional fields
+    transcription_status = serializers.CharField(source='transcription.status', read_only=True)
+    transcription_text_preview = serializers.SerializerMethodField()
+    duration_formatted = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SourceContent
+        fields = ['id', 'title', 'source_type', 'status', 'transcription_status', 'transcription_text_preview', 'duration_formatted', 'created_at']
+    
+    def get_transcription_text_preview(self, obj):
+        if hasattr(obj, 'transcription') and obj.transcription.text:
+            return obj.transcription.text[:200] + '...' if len(obj.transcription.text) > 200 else obj.transcription.text
+        return None
+    
+    def get_duration_formatted(self, obj):
+        duration = obj.get_duration()
+        if duration:
+            minutes = duration // 60
+            seconds = duration % 60
+            return f"{minutes}m {seconds}s"
+        return None
+```
+
+## Documentation
+
+### API Documentation
+Use DRF's built-in documentation features:
+
+```python
+# ✅ Good API documentation
+from rest_framework import serializers, viewsets
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
+class SourceContentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing source content.
+    
+    Provides CRUD operations for user source content with support for
+    uploading, transcription, and content generation.
+    """
+    
+    @swagger_auto_schema(
+        operation_description="Create a new source content",
+        request_body=SourceContentCreateSerializer,
+        responses={
+            201: openapi.Response('Source content created', SourceContentSerializer),
+            400: openapi.Response('Validation error'),
+            401: openapi.Response('Authentication required'),
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+    
+    @swagger_auto_schema(
+        operation_description="Start transcription for source content",
+        responses={
+            200: openapi.Response('Transcription started'),
+            400: openapi.Response('Invalid request'),
+            404: openapi.Response('Source content not found'),
+        }
+    )
+    @action(detail=True, methods=['post'])
+    def transcribe(self, request, pk=None):
+        """Start transcription process for the source content."""
+        source_content = self.get_object()
+        
+        if source_content.status != 'completed':
+            return Response({
+                'status': 'error',
+                'message': 'Source content must be completed before transcription'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        transcribe_content_task.delay(source_content.id)
+        
+        return Response({
+            'status': 'success',
+            'message': 'Transcription started'
+        })
+```
+
+## Rationale
+
+API design guidelines ensure:
+- **Consistency** - Predictable endpoint structure and response format
+- **Usability** - Clear, intuitive API that's easy to integrate with
+- **Security** - Proper authentication, authorization, and input validation
+- **Scalability** - Versioning and rate limiting support future growth
+- **Maintainability** - Consistent patterns make the API easier to maintain
+- **Documentation** - Clear API documentation improves developer experience

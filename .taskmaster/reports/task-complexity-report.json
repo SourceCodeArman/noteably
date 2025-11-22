@@ -1,0 +1,117 @@
+{
+	"meta": {
+		"generatedAt": "2025-11-22T22:21:13.313Z",
+		"tasksAnalyzed": 13,
+		"totalTasks": 13,
+		"analysisCount": 13,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Project Planning",
+			"complexityScore": 2,
+			"recommendedSubtasks": 10,
+			"expansionPrompt": "How are you planning to prioritize and allocate resources for each phase of the project? What strategies will you use to manage milestones and ensure timely completion of tasks?",
+			"reasoning": "Project Planning is a foundational task that sets the stage for all subsequent work. Its complexity comes from coordinating various elements (timeline, resources, milestones) and ensuring they are managed effectively."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Repository Planning",
+			"complexityScore": 3,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "What is the expected size of the repository, and how will different teams or individuals access it? How are you planning to organize directories for source code, tests, documentation, and assets?",
+			"reasoning": "Repository Planning requires careful consideration of version control systems, directory structures, and collaboration strategies. Its complexity arises from the need to balance accessibility with organization."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Ingestion Framework Development",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "How are you planning to handle file uploads, and what metadata will be extracted? What measures will you take to ensure data integrity during the ingestion process?",
+			"reasoning": "Developing an Ingestion Framework involves not only coding but also designing robust processes for handling different types of media. Its complexity comes from the need to balance functionality with performance."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Integration Testing",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "What are the key scenarios you need to test for real-world usage, and how will you ensure that external integrations (API calls) work as expected? What measures will you take to simulate failures?",
+			"reasoning": "Integration Testing is critical to ensuring that all components of a system work together seamlessly. Its complexity arises from the need to thoroughly test interactions between different systems and handle potential failure points."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Transcription Service Integration",
+			"complexityScore": 3,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "What specific features of the transcription service do you need to integrate into your system, and how will you handle real-time status updates? What measures will you take to ensure error handling?",
+			"reasoning": "Transcription Service Integration involves integrating external services with a system. Its complexity comes from understanding the capabilities of the service and designing robust interfaces for integration."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Content Generation Service Integration",
+			"complexityScore": 3,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "What specific features of the content generation service do you need to integrate into your system, and how will you handle real-time status updates? What measures will you take to ensure error handling?",
+			"reasoning": "Content Generation Service Integration is similar to Transcription Service Integration but involves generating content rather than transcribing audio. Its complexity comes from understanding the service's capabilities and designing appropriate interfaces for integration."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Performance Optimization",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "What specific areas of performance are you targeting, and what techniques will you use to optimize the system? How will you measure the impact of your optimizations?",
+			"reasoning": "Performance Optimization involves improving the efficiency of a system. Its complexity comes from understanding the bottlenecks and designing appropriate optimization strategies."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "User Interface Design",
+			"complexityScore": 3,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "What are the key features of the user interface you need to design, and what considerations do you have for responsiveness across different devices? How will you ensure that the design is intuitive and user-friendly?",
+			"reasoning": "User Interface Design requires a deep understanding of user needs and interface principles. Its complexity comes from creating an experience that is both visually appealing and functional."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "User Interface Implementation",
+			"complexityScore": 3,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "What are the key components of the user interface you need to implement, and how will you ensure that they integrate smoothly with the back-end services? What testing strategies will you use to validate the implementation?",
+			"reasoning": "User Interface Implementation involves coding the actual interface. Its complexity comes from ensuring that the interface works seamlessly with the rest of the system and meets user needs."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Background Processing System Development",
+			"complexityScore": 3,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "What are the specific tasks that need to be handled by the background processing system, and how will you manage task queues and worker processes? What measures will you take to ensure error handling and progress tracking?",
+			"reasoning": "Background Processing System Development involves designing a system to handle long-running tasks. Its complexity comes from ensuring reliability and scalability of the system."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Security Assessment and Hardening",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on security assessment and hardening.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "User Training and Documentation",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on user training and documentation.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 13,
+			"taskTitle": "Launch Preparation",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on launch preparation.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		}
+	]
+}

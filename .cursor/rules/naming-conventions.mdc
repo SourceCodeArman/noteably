@@ -1,0 +1,245 @@
+---
+description: Enforce consistent naming conventions across backend and frontend code
+alwaysApply: false
+---
+# Naming Conventions
+
+This rule enforces consistent naming conventions to improve code readability and maintainability across the Noteably platform.
+
+## Backend (Python Django REST)
+
+### Variables and Functions
+- Use `snake_case` for variables, functions, and methods
+- Use descriptive names that clearly indicate purpose
+
+```python
+# ✅ Good examples
+def transcribe_source_content(source_content_id, user_id):
+    transcription_provider = request.data.get('transcription_provider')
+    transcription_status = 'pending'
+    
+def normalize_transcription_data(transcription_data):
+    text = transcription_data.get('text')
+    return normalized_data
+
+# ❌ Bad examples
+def transcribeSourceContent(sourceContentId, userId):
+    transcriptionProvider = request.data.get('transcription_provider')
+    transcriptionStatus = 'pending'
+    
+def normalizeTranscriptionData(transcriptionData):
+    text = transcriptionData.get('text')
+    return normalizedData
+```
+
+### Classes and Models
+- Use `PascalCase` for classes, models, and exceptions
+- DRF serializers should end with `Serializer`
+- Views should end with `View` or `ViewSet`
+
+```python
+# ✅ Good examples
+class SourceContent(models.Model):
+    title = models.CharField(max_length=200)
+    source_type = models.CharField(max_length=20)
+
+class SourceContentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SourceContent
+        fields = '__all__'
+
+class SourceContentViewSet(viewsets.ModelViewSet):
+    queryset = SourceContent.objects.all()
+    serializer_class = SourceContentSerializer
+
+class TranscriptionError(Exception):
+    pass
+
+# ❌ Bad examples
+class sourceContent(models.Model):
+    title = models.CharField(max_length=200)
+
+class sourceContentSerializer(serializers.ModelSerializer):
+    pass
+
+class source_content_view(viewsets.ModelViewSet):
+    pass
+```
+
+### Constants
+- Use `UPPER_SNAKE_CASE` for constants and configuration values
+
+```python
+# ✅ Good examples
+MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+ALLOWED_MIME_TYPES = ['audio/mpeg', 'audio/wav', 'video/mp4', 'video/webm']
+ALLOWED_TRANSCRIPTION_PROVIDERS = ['whisper', 'assemblyai']
+DEFAULT_SUMMARY_LENGTH = 'medium'
+
+# ❌ Bad examples
+maxFileSize = 500 * 1024 * 1024
+allowedMimeTypes = ['audio/mpeg', 'video/mp4']
+defaultSummaryLength = 'medium'
+```
+
+### File Names
+- Use `snake_case.py` for Python files
+- Use descriptive names that indicate the file's purpose
+
+```python
+# ✅ Good examples
+# File: backend/apps/api/models.py
+# File: backend/apps/api/serializers.py
+# File: backend/apps/api/views.py
+# File: backend/apps/api/tasks.py
+
+# ❌ Bad examples
+# File: backend/apps/api/Models.py
+# File: backend/apps/api/serializers.py
+# File: backend/apps/api/Views.py
+```
+
+## Frontend (React/JavaScript)
+
+### Variables and Functions
+- Use `camelCase` for variables, functions, and methods
+- Use descriptive names that clearly indicate purpose
+
+```javascript
+// ✅ Good examples
+const uploadProgress = 0.5;
+const transcriptionData = await fetchTranscription(id);
+const isTranscriptionComplete = status === 'completed';
+
+function handleSourceUpload(event) {
+    const selectedFile = event.target.files[0];
+    return processSourceFile(selectedFile);
+}
+
+// ❌ Bad examples
+const upload_progress = 0.5;
+const transcription_data = await fetchTranscription(id);
+const is_transcription_complete = status === 'completed';
+
+function handle_source_upload(event) {
+    const selected_file = event.target.files[0];
+    return process_source_file(selected_file);
+}
+```
+
+### React Components
+- Use `PascalCase` for React components
+- Use descriptive names that indicate the component's purpose
+
+```jsx
+// ✅ Good examples
+function UploadInterface() {
+    return <div>Upload Interface</div>;
+}
+
+function TranscriptionResult({ transcription }) {
+    return <div>{transcription.text}</div>;
+}
+
+function useTranscriptionWebSocket(transcriptionId) {
+    // Hook logic
+}
+
+// ❌ Bad examples
+function uploadInterface() {
+    return <div>Upload Interface</div>;
+}
+
+function transcription_result({ transcription }) {
+    return <div>{transcription.text}</div>;
+}
+
+function use_transcription_websocket(transcriptionId) {
+    // Hook logic
+}
+```
+
+### Constants
+- Use `UPPER_SNAKE_CASE` for constants
+
+```javascript
+// ✅ Good examples
+const MAX_FILE_SIZE = 500 * 1024 * 1024;
+const API_BASE_URL = 'https://api.noteably.com';
+const DEFAULT_TIMEOUT = 5000;
+
+// ❌ Bad examples
+const maxFileSize = 500 * 1024 * 1024;
+const apiBaseUrl = 'https://api.noteably.com';
+const defaultTimeout = 5000;
+```
+
+### File Names
+- Use `PascalCase.jsx` for React components
+- Use `camelCase.js` for utilities and hooks
+
+```javascript
+// ✅ Good examples
+// File: frontend/src/components/UploadPage.jsx
+// File: frontend/src/components/SummaryResult.jsx
+// File: frontend/src/hooks/useSummaryWebSocket.js
+// File: frontend/src/utils/summaryParser.js
+
+// ❌ Bad examples
+// File: frontend/src/components/uploadPage.jsx
+// File: frontend/src/components/summary_result.jsx
+// File: frontend/src/hooks/use_summary_websocket.js
+```
+
+## Special Cases
+
+### Django Apps
+- Use lowercase, descriptive names for Django apps
+- Avoid abbreviations unless they're widely understood
+
+```python
+# ✅ Good examples
+# apps/accounts/
+# apps/ingestion/
+# apps/transcription/
+# apps/generation/
+# apps/storage/
+# apps/tasks/
+# apps/analytics/
+
+# ❌ Bad examples
+# apps/acc/
+# apps/ingest/
+# apps/trans/
+# apps/gen/
+# apps/store/
+```
+
+### API Endpoints
+- Use lowercase, plural nouns for REST endpoints
+- Use hyphens for multi-word resources
+
+```python
+# ✅ Good examples
+# /api/v1/sources/
+# /api/v1/transcriptions/
+# /api/v1/generated-content/
+# /api/v1/summaries/
+# /api/v1/flashcards/
+# /api/v1/quizzes/
+
+# ❌ Bad examples
+# /api/v1/Source/
+# /api/v1/transcriptionList/
+# /api/v1/generated_content/
+# /api/v1/Summary/
+```
+
+## Rationale
+
+Consistent naming conventions:
+- **Improve readability** - Developers can quickly understand code structure
+- **Reduce cognitive load** - Predictable patterns make code easier to scan
+- **Enable better tooling** - IDEs can provide better autocomplete and refactoring
+- **Facilitate team collaboration** - New team members can quickly understand the codebase
+- **Support maintainability** - Consistent patterns make refactoring safer and easier

@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noteably - Theme Showcase</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@300;400;500;700&family=Poppins:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600;700&family=Source+Sans+Pro:wght@300;400;600;700&family=Lora:wght@400;700&family=Raleway:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 3rem;
+            margin-bottom: 50px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .themes-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1200px) {
+            .themes-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .theme-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .theme-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .theme-header {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .theme-title {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .theme-subtitle {
+            font-size: 0.95rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .color-swatch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .color-box {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+
+        .color-label {
+            font-size: 0.7rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .theme-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+            font-size: 0.85rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            color: #999;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .component-showcase {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #999;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .typography-demo {
+            margin-bottom: 20px;
+        }
+
+        .typography-demo h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .typography-demo h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .typography-demo p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .tag-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* Theme 1: Ocean Breeze */
+        .theme-1 .theme-title { color: #0066cc; font-family: 'Inter', sans-serif; }
+        .theme-1 .btn { background: #0066cc; color: white; }
+        .theme-1 .btn-secondary { border-color: #0066cc; color: #0066cc; }
+        .theme-1 .input { border-color: #0066cc; }
+        .theme-1 .badge { background: #00a8e8; color: white; }
+        .theme-1 .card { background: #e6f3ff; border-left: 4px solid #0066cc; }
+        .theme-1 .alert { background: #e6f3ff; border-left: 4px solid #0066cc; color: #004080; }
+        .theme-1 .progress-fill { background: #0066cc; }
+        .theme-1 .typography-demo h1, .theme-1 .typography-demo h2 { color: #0066cc; }
+
+        /* Theme 2: Sunset Glow */
+        .theme-2 .theme-title { color: #ff6b6b; font-family: 'Poppins', sans-serif; }
+        .theme-2 .btn { background: linear-gradient(135deg, #ff6b6b, #ee5a6f); color: white; }
+        .theme-2 .btn-secondary { border-color: #ff6b6b; color: #ff6b6b; }
+        .theme-2 .input { border-color: #ff6b6b; }
+        .theme-2 .badge { background: #ffa07a; color: white; }
+        .theme-2 .card { background: #fff5f5; border-left: 4px solid #ff6b6b; }
+        .theme-2 .alert { background: #fff5f5; border-left: 4px solid #ff6b6b; color: #cc0000; }
+        .theme-2 .progress-fill { background: #ff6b6b; }
+        .theme-2 .typography-demo h1, .theme-2 .typography-demo h2 { color: #ff6b6b; }
+
+        /* Theme 3: Forest Green */
+        .theme-3 .theme-title { color: #2d5016; font-family: 'Merriweather', serif; }
+        .theme-3 .btn { background: #4a7c59; color: white; }
+        .theme-3 .btn-secondary { border-color: #4a7c59; color: #4a7c59; }
+        .theme-3 .input { border-color: #4a7c59; }
+        .theme-3 .badge { background: #6b8e23; color: white; }
+        .theme-3 .card { background: #f0f7f0; border-left: 4px solid #4a7c59; }
+        .theme-3 .alert { background: #f0f7f0; border-left: 4px solid #4a7c59; color: #1a3009; }
+        .theme-3 .progress-fill { background: #4a7c59; }
+        .theme-3 .typography-demo h1, .theme-3 .typography-demo h2 { color: #2d5016; }
+
+        /* Theme 4: Midnight Blue */
+        .theme-4 .theme-title { color: #1a1a2e; font-family: 'Montserrat', sans-serif; }
+        .theme-4 .btn { background: #16213e; color: white; }
+        .theme-4 .btn-secondary { border-color: #16213e; color: #16213e; }
+        .theme-4 .input { border-color: #16213e; background: #f8f9fa; }
+        .theme-4 .badge { background: #0f3460; color: white; }
+        .theme-4 .card { background: #e8eaf6; border-left: 4px solid #16213e; }
+        .theme-4 .alert { background: #e8eaf6; border-left: 4px solid #16213e; color: #0d1425; }
+        .theme-4 .progress-fill { background: #16213e; }
+        .theme-4 .typography-demo h1, .theme-4 .typography-demo h2 { color: #1a1a2e; }
+
+        /* Theme 5: Purple Dream */
+        .theme-5 .theme-title { color: #6c5ce7; font-family: 'Raleway', sans-serif; }
+        .theme-5 .btn { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; }
+        .theme-5 .btn-secondary { border-color: #6c5ce7; color: #6c5ce7; }
+        .theme-5 .input { border-color: #6c5ce7; }
+        .theme-5 .badge { background: #a29bfe; color: white; }
+        .theme-5 .card { background: #f3f0ff; border-left: 4px solid #6c5ce7; }
+        .theme-5 .alert { background: #f3f0ff; border-left: 4px solid #6c5ce7; color: #4c3fa8; }
+        .theme-5 .progress-fill { background: #6c5ce7; }
+        .theme-5 .typography-demo h1, .theme-5 .typography-demo h2 { color: #6c5ce7; }
+
+        /* Theme 6: Warm Amber */
+        .theme-6 .theme-title { color: #d97706; font-family: 'Open Sans', sans-serif; }
+        .theme-6 .btn { background: #f59e0b; color: white; }
+        .theme-6 .btn-secondary { border-color: #f59e0b; color: #f59e0b; }
+        .theme-6 .input { border-color: #f59e0b; }
+        .theme-6 .badge { background: #fbbf24; color: #78350f; }
+        .theme-6 .card { background: #fffbeb; border-left: 4px solid #f59e0b; }
+        .theme-6 .alert { background: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; }
+        .theme-6 .progress-fill { background: #f59e0b; }
+        .theme-6 .typography-demo h1, .theme-6 .typography-demo h2 { color: #d97706; }
+
+        /* Theme 7: Rose Gold */
+        .theme-7 .theme-title { color: #b76e79; font-family: 'Playfair Display', serif; }
+        .theme-7 .btn { background: #c9a9a6; color: white; }
+        .theme-7 .btn-secondary { border-color: #c9a9a6; color: #c9a9a6; }
+        .theme-7 .input { border-color: #c9a9a6; }
+        .theme-7 .badge { background: #d4a5a5; color: white; }
+        .theme-7 .card { background: #fdf2f8; border-left: 4px solid #c9a9a6; }
+        .theme-7 .alert { background: #fdf2f8; border-left: 4px solid #c9a9a6; color: #8b4d57; }
+        .theme-7 .progress-fill { background: #c9a9a6; }
+        .theme-7 .typography-demo h1, .theme-7 .typography-demo h2 { color: #b76e79; }
+
+        /* Theme 8: Electric Cyan */
+        .theme-8 .theme-title { color: #00d4ff; font-family: 'Space Grotesk', sans-serif; }
+        .theme-8 .btn { background: #00b8d4; color: #001f3f; font-weight: 600; }
+        .theme-8 .btn-secondary { border-color: #00d4ff; color: #00d4ff; background: transparent; }
+        .theme-8 .input { border-color: #00d4ff; background: #001f3f; color: #00d4ff; }
+        .theme-8 .badge { background: #00d4ff; color: #001f3f; }
+        .theme-8 .card { background: #001f3f; border-left: 4px solid #00d4ff; color: #00d4ff; }
+        .theme-8 .alert { background: #001f3f; border-left: 4px solid #00d4ff; color: #00d4ff; }
+        .theme-8 .progress-fill { background: #00d4ff; }
+        .theme-8 .typography-demo h1, .theme-8 .typography-demo h2 { color: #00d4ff; }
+        .theme-8 .typography-demo p { color: #00d4ff; }
+
+        /* Theme 9: Earthy Brown */
+        .theme-9 .theme-title { color: #8b4513; font-family: 'Lora', serif; }
+        .theme-9 .btn { background: #a0522d; color: white; }
+        .theme-9 .btn-secondary { border-color: #a0522d; color: #a0522d; }
+        .theme-9 .input { border-color: #a0522d; }
+        .theme-9 .badge { background: #cd853f; color: white; }
+        .theme-9 .card { background: #faf5f0; border-left: 4px solid #a0522d; }
+        .theme-9 .alert { background: #faf5f0; border-left: 4px solid #a0522d; color: #5a2e0b; }
+        .theme-9 .progress-fill { background: #a0522d; }
+        .theme-9 .typography-demo h1, .theme-9 .typography-demo h2 { color: #8b4513; }
+
+        /* Theme 10: Sky Blue */
+        .theme-10 .theme-title { color: #0ea5e9; font-family: 'Work Sans', sans-serif; }
+        .theme-10 .btn { background: #38bdf8; color: white; }
+        .theme-10 .btn-secondary { border-color: #38bdf8; color: #38bdf8; }
+        .theme-10 .input { border-color: #38bdf8; }
+        .theme-10 .badge { background: #7dd3fc; color: #0c4a6e; }
+        .theme-10 .card { background: #f0f9ff; border-left: 4px solid #38bdf8; }
+        .theme-10 .alert { background: #f0f9ff; border-left: 4px solid #38bdf8; color: #075985; }
+        .theme-10 .progress-fill { background: #38bdf8; }
+        .theme-10 .typography-demo h1, .theme-10 .typography-demo h2 { color: #0ea5e9; }
+
+        /* Theme 11: Coral Reef */
+        .theme-11 .theme-title { color: #ff7f50; font-family: 'Roboto', sans-serif; }
+        .theme-11 .btn { background: #ff6347; color: white; }
+        .theme-11 .btn-secondary { border-color: #ff6347; color: #ff6347; }
+        .theme-11 .input { border-color: #ff6347; }
+        .theme-11 .badge { background: #ffa07a; color: white; }
+        .theme-11 .card { background: #fff8f5; border-left: 4px solid #ff6347; }
+        .theme-11 .alert { background: #fff8f5; border-left: 4px solid #ff6347; color: #cc2900; }
+        .theme-11 .progress-fill { background: #ff6347; }
+        .theme-11 .typography-demo h1, .theme-11 .typography-demo h2 { color: #ff7f50; }
+
+        /* Theme 12: Lavender Mist */
+        .theme-12 .theme-title { color: #9370db; font-family: 'Source Sans Pro', sans-serif; }
+        .theme-12 .btn { background: #8a2be2; color: white; }
+        .theme-12 .btn-secondary { border-color: #9370db; color: #9370db; }
+        .theme-12 .input { border-color: #9370db; }
+        .theme-12 .badge { background: #ba55d3; color: white; }
+        .theme-12 .card { background: #f5f0ff; border-left: 4px solid #9370db; }
+        .theme-12 .alert { background: #f5f0ff; border-left: 4px solid #9370db; color: #6a1b9a; }
+        .theme-12 .progress-fill { background: #9370db; }
+        .theme-12 .typography-demo h1, .theme-12 .typography-demo h2 { color: #9370db; }
+
+        /* Theme 13: Emerald Forest */
+        .theme-13 .theme-title { color: #10b981; font-family: 'Inter', sans-serif; }
+        .theme-13 .btn { background: #059669; color: white; }
+        .theme-13 .btn-secondary { border-color: #10b981; color: #10b981; }
+        .theme-13 .input { border-color: #10b981; }
+        .theme-13 .badge { background: #34d399; color: #064e3b; }
+        .theme-13 .card { background: #ecfdf5; border-left: 4px solid #10b981; }
+        .theme-13 .alert { background: #ecfdf5; border-left: 4px solid #10b981; color: #047857; }
+        .theme-13 .progress-fill { background: #10b981; }
+        .theme-13 .typography-demo h1, .theme-13 .typography-demo h2 { color: #10b981; }
+
+        /* Theme 14: Slate Gray */
+        .theme-14 .theme-title { color: #475569; font-family: 'Montserrat', sans-serif; }
+        .theme-14 .btn { background: #334155; color: white; }
+        .theme-14 .btn-secondary { border-color: #475569; color: #475569; }
+        .theme-14 .input { border-color: #475569; }
+        .theme-14 .badge { background: #64748b; color: white; }
+        .theme-14 .card { background: #f1f5f9; border-left: 4px solid #475569; }
+        .theme-14 .alert { background: #f1f5f9; border-left: 4px solid #475569; color: #1e293b; }
+        .theme-14 .progress-fill { background: #475569; }
+        .theme-14 .typography-demo h1, .theme-14 .typography-demo h2 { color: #475569; }
+
+        /* Theme 15: Golden Hour */
+        .theme-15 .theme-title { color: #f59e0b; font-family: 'Poppins', sans-serif; }
+        .theme-15 .btn { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #78350f; font-weight: 600; }
+        .theme-15 .btn-secondary { border-color: #f59e0b; color: #f59e0b; }
+        .theme-15 .input { border-color: #f59e0b; }
+        .theme-15 .badge { background: #fcd34d; color: #78350f; }
+        .theme-15 .card { background: #fffbeb; border-left: 4px solid #f59e0b; }
+        .theme-15 .alert { background: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; }
+        .theme-15 .progress-fill { background: #f59e0b; }
+        .theme-15 .typography-demo h1, .theme-15 .typography-demo h2 { color: #f59e0b; }
+
+        /* Common Component Styles */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-secondary {
+            background: transparent;
+        }
+
+        .input {
+            padding: 12px 16px;
+            border: 2px solid;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            width: 100%;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.1);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .card {
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .card-text {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            line-height: 1.5;
+        }
+
+        .component-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Noteably Theme Showcase</h1>
+        
+        <div class="themes-grid">
+            <!-- Theme 1: Ocean Breeze -->
+            <div class="theme-card theme-1">
+                <div class="theme-header">
+                    <div class="theme-title">Ocean Breeze</div>
+                    <div class="theme-subtitle">Fresh and calming blue tones perfect for productivity apps</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #0066cc;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #00a8e8;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #e6f3ff;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Inter</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Modern & Clean</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">New</span>
+                            <span class="badge">Featured</span>
+                            <span class="badge">Popular</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 65%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 2: Sunset Glow -->
+            <div class="theme-card theme-2">
+                <div class="theme-header">
+                    <div class="theme-title">Sunset Glow</div>
+                    <div class="theme-subtitle">Warm and energetic gradient perfect for creative applications</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #ff6b6b;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #ee5a6f;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #ffa07a;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Poppins</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Vibrant & Energetic</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Hot</span>
+                            <span class="badge">Trending</span>
+                            <span class="badge">Popular</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 75%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 3: Forest Green -->
+            <div class="theme-card theme-3">
+                <div class="theme-header">
+                    <div class="theme-title">Forest Green</div>
+                    <div class="theme-subtitle">Natural and earthy tones ideal for eco-friendly and organic brands</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #2d5016;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #4a7c59;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #6b8e23;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Merriweather</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Natural & Organic</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Eco</span>
+                            <span class="badge">Natural</span>
+                            <span class="badge">Green</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 55%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 4: Midnight Blue -->
+            <div class="theme-card theme-4">
+                <div class="theme-header">
+                    <div class="theme-title">Midnight Blue</div>
+                    <div class="theme-subtitle">Deep and professional dark theme for premium applications</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #1a1a2e;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #16213e;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #0f3460;"></div>
+                            <div class="color-label">Dark</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Montserrat</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Professional & Dark</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Dark</span>
+                            <span class="badge">Premium</span>
+                            <span class="badge">Pro</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 80%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 5: Purple Dream -->
+            <div class="theme-card theme-5">
+                <div class="theme-header">
+                    <div class="theme-title">Purple Dream</div>
+                    <div class="theme-subtitle">Creative and magical gradient perfect for artistic projects</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #6c5ce7;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #a29bfe;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #f3f0ff;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Raleway</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Creative & Magical</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Creative</span>
+                            <span class="badge">Magic</span>
+                            <span class="badge">Art</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 70%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 6: Warm Amber -->
+            <div class="theme-card theme-6">
+                <div class="theme-header">
+                    <div class="theme-title">Warm Amber</div>
+                    <div class="theme-subtitle">Cozy and inviting tones perfect for comfort-focused applications</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #d97706;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #f59e0b;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #fbbf24;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Open Sans</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Warm & Cozy</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Warm</span>
+                            <span class="badge">Cozy</span>
+                            <span class="badge">Comfort</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 60%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 7: Rose Gold -->
+            <div class="theme-card theme-7">
+                <div class="theme-header">
+                    <div class="theme-title">Rose Gold</div>
+                    <div class="theme-subtitle">Elegant and luxurious tones for premium brand experiences</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #b76e79;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #c9a9a6;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #d4a5a5;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Playfair Display</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Elegant & Luxury</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Elegant</span>
+                            <span class="badge">Luxury</span>
+                            <span class="badge">Premium</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 85%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 8: Electric Cyan -->
+            <div class="theme-card theme-8">
+                <div class="theme-header">
+                    <div class="theme-title">Electric Cyan</div>
+                    <div class="theme-subtitle">Futuristic tech theme with high contrast for modern interfaces</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #00d4ff;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #00b8d4;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #001f3f;"></div>
+                            <div class="color-label">Dark</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Space Grotesk</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Tech & Futuristic</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Tech</span>
+                            <span class="badge">Futuristic</span>
+                            <span class="badge">Modern</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 90%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 9: Earthy Brown -->
+            <div class="theme-card theme-9">
+                <div class="theme-header">
+                    <div class="theme-title">Earthy Brown</div>
+                    <div class="theme-subtitle">Rustic and organic tones perfect for artisanal brands</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #8b4513;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #a0522d;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #cd853f;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Lora</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Rustic & Organic</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Organic</span>
+                            <span class="badge">Rustic</span>
+                            <span class="badge">Natural</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 50%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 10: Sky Blue -->
+            <div class="theme-card theme-10">
+                <div class="theme-header">
+                    <div class="theme-title">Sky Blue</div>
+                    <div class="theme-subtitle">Fresh and airy tones perfect for light and clean interfaces</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #0ea5e9;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #38bdf8;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #7dd3fc;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Work Sans</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Fresh & Airy</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Fresh</span>
+                            <span class="badge">Airy</span>
+                            <span class="badge">Light</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 72%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 11: Coral Reef -->
+            <div class="theme-card theme-11">
+                <div class="theme-header">
+                    <div class="theme-title">Coral Reef</div>
+                    <div class="theme-subtitle">Vibrant tropical colors perfect for energetic applications</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #ff7f50;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #ff6347;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #ffa07a;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Roboto</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Vibrant & Tropical</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Vibrant</span>
+                            <span class="badge">Tropical</span>
+                            <span class="badge">Energetic</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 68%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 12: Lavender Mist -->
+            <div class="theme-card theme-12">
+                <div class="theme-header">
+                    <div class="theme-title">Lavender Mist</div>
+                    <div class="theme-subtitle">Calming and serene tones perfect for wellness applications</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #9370db;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #8a2be2;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #ba55d3;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Source Sans Pro</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Calm & Serene</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Calm</span>
+                            <span class="badge">Serene</span>
+                            <span class="badge">Peaceful</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 58%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 13: Emerald Forest -->
+            <div class="theme-card theme-13">
+                <div class="theme-header">
+                    <div class="theme-title">Emerald Forest</div>
+                    <div class="theme-subtitle">Fresh growth tones perfect for success and progress applications</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #10b981;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #059669;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #34d399;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Inter</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Fresh & Growth</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Growth</span>
+                            <span class="badge">Fresh</span>
+                            <span class="badge">Success</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 78%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 14: Slate Gray -->
+            <div class="theme-card theme-14">
+                <div class="theme-header">
+                    <div class="theme-title">Slate Gray</div>
+                    <div class="theme-subtitle">Professional minimal tones perfect for business applications</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #475569;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #334155;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #64748b;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Montserrat</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Professional & Minimal</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Professional</span>
+                            <span class="badge">Minimal</span>
+                            <span class="badge">Clean</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 63%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme 15: Golden Hour -->
+            <div class="theme-card theme-15">
+                <div class="theme-header">
+                    <div class="theme-title">Golden Hour</div>
+                    <div class="theme-subtitle">Premium golden tones perfect for luxury and success applications</div>
+                    <div class="color-palette">
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #f59e0b;"></div>
+                            <div class="color-label">Primary</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #fbbf24;"></div>
+                            <div class="color-label">Accent</div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-box" style="background: #fcd34d;"></div>
+                            <div class="color-label">Light</div>
+                        </div>
+                    </div>
+                    <div class="theme-info">
+                        <div class="info-item">
+                            <div class="info-label">Font Family</div>
+                            <div class="info-value">Poppins</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Style</div>
+                            <div class="info-value">Premium & Golden</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="component-showcase">
+                    <div>
+                        <div class="section-title">Typography</div>
+                        <div class="typography-demo">
+                            <h1>Heading One</h1>
+                            <h2>Heading Two</h2>
+                            <p>Body text with excellent readability and comfortable line spacing for long reading sessions.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Buttons</div>
+                        <div class="button-group">
+                            <button class="btn">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Input</div>
+                        <input type="text" class="input" placeholder="Enter your text here...">
+                    </div>
+                    <div>
+                        <div class="section-title">Tags</div>
+                        <div class="tag-list">
+                            <span class="badge">Premium</span>
+                            <span class="badge">Golden</span>
+                            <span class="badge">Success</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Alert</div>
+                        <div class="alert">This is an informational alert message.</div>
+                    </div>
+                    <div>
+                        <div class="section-title">Progress</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 88%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title">Card</div>
+                        <div class="card">
+                            <div class="card-title">Sample Card Title</div>
+                            <div class="card-text">This card demonstrates the theme's color palette and typography in a content container.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
