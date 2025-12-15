@@ -14,18 +14,12 @@ Use consistent, RESTful naming patterns:
 
 ```python
 # ✅ Good RESTful endpoints
-# GET    /api/v1/sources/                # List source contents
-# POST   /api/v1/sources/                # Create source content
-# GET    /api/v1/sources/{id}/           # Get specific source content
-# PUT    /api/v1/sources/{id}/           # Update source content
-# DELETE /api/v1/sources/{id}/           # Delete source content
-# POST   /api/v1/sources/{id}/transcribe/  # Start transcription
-# GET    /api/v1/transcriptions/         # List transcriptions
-# POST   /api/v1/transcriptions/{id}/generate/  # Generate study materials
-# GET    /api/v1/generated-content/      # List generated content
-# GET    /api/v1/summaries/              # List summaries
-# GET    /api/v1/flashcards/             # List flashcards
-# GET    /api/v1/quizzes/                # List quizzes
+# GET    /api/v1/transactions/           # List transactions
+# POST   /api/v1/transactions/           # Create transaction
+# GET    /api/v1/transactions/{id}/      # Get specific transaction
+# PUT    /api/v1/transactions/{id}/      # Update transaction
+# DELETE /api/v1/transactions/{id}/      # Delete transaction
+# POST   /api/v1/transactions/{id}/categorize/  # Custom action
 
 # ✅ Good URL patterns in urls.py
 from django.urls import path, include
@@ -33,26 +27,23 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-router.register(r'sources', views.SourceContentViewSet)
-router.register(r'transcriptions', views.TranscriptionViewSet)
-router.register(r'generated-content', views.GeneratedContentViewSet)
-router.register(r'summaries', views.SummaryViewSet)
-router.register(r'flashcards', views.FlashcardViewSet)
-router.register(r'quizzes', views.QuizViewSet)
+router.register(r'transactions', views.TransactionViewSet)
+router.register(r'accounts', views.AccountViewSet)
+router.register(r'goals', views.GoalViewSet)
+router.register(r'budgets', views.BudgetViewSet)
 
 app_name = 'api'
 urlpatterns = [
     path('', include(router.urls)),
-    path('sources/<int:source_id>/transcribe/', views.start_transcription, name='start-transcription'),
-    path('transcriptions/<int:transcription_id>/generate/', views.generate_content, name='generate-content'),
-    path('generated-content/<int:content_id>/refine/', views.refine_content, name='refine-content'),
+    path('accounts/<int:account_id>/sync/', views.sync_account, name='sync-account'),
+    path('transactions/<int:transaction_id>/categorize/', views.categorize_transaction, name='categorize'),
 ]
 
 # ❌ Bad non-RESTful endpoints
-# GET    /api/v1/getSources/
-# POST   /api/v1/createSource/
-# GET    /api/v1/sourceDetails/{id}/
-# POST   /api/v1/deleteSource/
+# GET    /api/v1/getTransactions/
+# POST   /api/v1/createTransaction/
+# GET    /api/v1/transactionDetails/{id}/
+# POST   /api/v1/deleteTransaction/
 ```
 
 ### Resource Naming
@@ -60,20 +51,18 @@ Use plural nouns for collections and be consistent:
 
 ```python
 # ✅ Good resource naming
-/api/v1/sources/              # Collection of source contents
-/api/v1/transcriptions/       # Collection of transcriptions
-/api/v1/generated-content/    # Collection of generated content (kebab-case for multi-word)
-/api/v1/summaries/            # Collection of summaries
-/api/v1/flashcards/           # Collection of flashcards
-/api/v1/quizzes/              # Collection of quizzes
+/api/v1/transactions/          # Collection of transactions
+/api/v1/accounts/              # Collection of accounts
+/api/v1/goals/                # Collection of savings goals
+/api/v1/budgets/               # Collection of budgets
+/api/v1/categories/           # Collection of categories
 
 # ❌ Bad resource naming
-/api/v1/source/               # Should be plural
-/api/v1/transcription/         # Should be plural
-/api/v1/generatedContent/     # Should be kebab-case
-/api/v1/summary/              # Should be plural
-/api/v1/flashcard/            # Should be plural
-/api/v1/quiz/                 # Should be plural
+/api/v1/transaction/          # Should be plural
+/api/v1/account/              # Should be plural
+/api/v1/goal/                 # Should be plural
+/api/v1/budget/               # Should be plural
+/api/v1/transactionCategory/  # Should be kebab-case and plural
 ```
 
 ## Response Format Standards
@@ -86,21 +75,21 @@ Always return consistent JSON responses:
 from rest_framework.response import Response
 from rest_framework import status
 
-def create_source_content(request):
+def create_transaction(request):
     try:
-        serializer = SourceContentCreateSerializer(data=request.data)
+        serializer = TransactionCreateSerializer(data=request.data)
         if serializer.is_valid():
-            source_content = serializer.save(user=request.user)
+            transaction = serializer.save(user=request.user)
             return Response({
                 'status': 'success',
                 'data': {
-                    'id': source_content.id,
-                    'title': source_content.title,
-                    'source_type': source_content.source_type,
-                    'status': source_content.status,
-                    'created_at': source_content.created_at
+                    'id': transaction.id,
+                    'merchant_name': transaction.merchant_name,
+                    'amount': str(transaction.amount),
+                    'date': transaction.date,
+                    'created_at': transaction.created_at
                 },
-                'message': 'Source content created successfully'
+                'message': 'Transaction created successfully'
             }, status=status.HTTP_201_CREATED)
         else:
             return Response({
@@ -116,19 +105,19 @@ def create_source_content(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ✅ Good list response format
-def list_source_contents(request):
-    source_contents = SourceContent.objects.for_user(request.user)
-    serializer = SourceContentListSerializer(source_contents, many=True)
+def list_transactions(request):
+    transactions = Transaction.objects.for_user(request.user)
+    serializer = TransactionListSerializer(transactions, many=True)
     
     return Response({
         'status': 'success',
         'data': {
-            'source_contents': serializer.data,
+            'transactions': serializer.data,
             'count': len(serializer.data),
             'page': 1,
             'total_pages': 1
         },
-        'message': 'Source contents retrieved successfully'
+        'message': 'Transactions retrieved successfully'
     })
 
 # ❌ Bad inconsistent response format
@@ -164,42 +153,28 @@ def custom_exception_handler(exc, context):
     return response
 
 # ✅ Good validation error format
-class SourceContentCreateSerializer(serializers.ModelSerializer):
-    def validate_title(self, value):
-        if len(value) < 2:
+class TransactionCreateSerializer(serializers.ModelSerializer):
+    def validate_amount(self, value):
+        if value == 0:
             raise serializers.ValidationError({
-                'title': ['Title must be at least 2 characters long']
+                'amount': ['Transaction amount cannot be zero']
             })
         return value
     
-    def validate_source_type(self, value):
-        valid_types = ['youtube', 'file', 'text']
-        if value not in valid_types:
+    def validate_merchant_name(self, value):
+        if len(value) < 2:
             raise serializers.ValidationError({
-                'source_type': [f'Source type must be one of {valid_types}']
+                'merchant_name': ['Merchant name must be at least 2 characters long']
             })
         return value
     
     def validate(self, data):
-        # Ensure file_reference belongs to user
-        file_reference = data.get('file_reference')
-        if file_reference and file_reference.user != self.context['request'].user:
+        # Ensure account belongs to user
+        account = data.get('account')
+        if account and account.user != self.context['request'].user:
             raise serializers.ValidationError({
-                'non_field_errors': ['File reference does not belong to user']
+                'non_field_errors': ['Account does not belong to user']
             })
-        
-        # Validate source type specific requirements
-        source_type = data.get('source_type')
-        if source_type == 'youtube' and not data.get('source_url'):
-            raise serializers.ValidationError({
-                'source_url': ['YouTube URL is required for youtube source type']
-            })
-        
-        if source_type == 'text' and not data.get('raw_text'):
-            raise serializers.ValidationError({
-                'raw_text': ['Text content is required for text source type']
-            })
-        
         return data
 ```
 
@@ -214,50 +189,50 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-class SourceContentViewSet(viewsets.ModelViewSet):
+class TransactionViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        return SourceContent.objects.filter(user=self.request.user)
+        return Transaction.objects.filter(user=self.request.user)
     
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-# ✅ Good source content ownership validation
-def create_source_content_with_file(request):
-    file_reference_id = request.data.get('file_reference')
+# ✅ Good account ownership validation
+def create_transaction_with_account(request):
+    account_id = request.data.get('account')
     
-    if not file_reference_id:
+    if not account_id:
         return Response({
             'status': 'error',
             'data': None,
-            'message': 'File reference ID required'
+            'message': 'Account ID required'
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    # Verify file reference belongs to user
+    # Verify account belongs to user
     try:
-        file_reference = FileReference.objects.get(id=file_reference_id, user=request.user)
-    except FileReference.DoesNotExist:
+        account = Account.objects.get(id=account_id, user=request.user)
+    except Account.DoesNotExist:
         return Response({
             'status': 'error',
             'data': None,
-            'message': 'File reference not found or does not belong to user'
+            'message': 'Account not found or does not belong to user'
         }, status=status.HTTP_404_NOT_FOUND)
     
-    # Create source content
-    source_content = SourceContent.objects.create(
+    # Create transaction
+    transaction = Transaction.objects.create(
         user=request.user,
-        file_reference=file_reference,
-        title=request.data.get('title', 'Untitled'),
-        source_type='file',
-        status='pending'
+        account=account,
+        merchant_name=request.data.get('merchant_name'),
+        amount=request.data.get('amount'),
+        date=request.data.get('date')
     )
     
     return Response({
         'status': 'success',
-        'data': {'id': source_content.id},
-        'message': 'Source content created successfully'
+        'data': {'id': transaction.id},
+        'message': 'Transaction created successfully'
     })
 ```
 
@@ -280,23 +255,23 @@ class IsOwnerOrReadOnly(BasePermission):
         # Write permissions only to the owner
         return obj.user == request.user
 
-class IsSourceContentOwner(BasePermission):
+class IsAccountOwner(BasePermission):
     """
-    Allow only the owner of the source content to access it.
+    Allow only the owner of the account to access it.
     """
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
         
-        # For source content-specific views, check ownership
+        # For account-specific views, check ownership
         if hasattr(view, 'get_object'):
-            source_content = view.get_object()
-            return source_content.user == request.user
+            account = view.get_object()
+            return account.user == request.user
         
         return True
 
 # Usage in views
-class SourceContentViewSet(viewsets.ModelViewSet):
+class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerOrReadOnly]
     
     def get_permissions(self):
@@ -315,39 +290,28 @@ Implement comprehensive input validation:
 
 ```python
 # ✅ Good input validation
-class SourceContentUploadSerializer(serializers.Serializer):
-    title = serializers.CharField(required=False, max_length=200)
-    source_type = serializers.CharField(required=True)
-    source_url = serializers.URLField(required=False)
-    file_reference = serializers.IntegerField(required=False)
-    raw_text = serializers.CharField(required=False)
+class AccountConnectionSerializer(serializers.Serializer):
+    plaid_access_token = serializers.CharField(required=True)
+    institution_id = serializers.CharField(required=True)
+    institution_name = serializers.CharField(required=False)
     
-    def validate_source_type(self, value):
-        valid_types = ['youtube', 'file', 'text']
-        if value not in valid_types:
-            raise serializers.ValidationError(f'Source type must be one of {valid_types}')
+    def validate_plaid_access_token(self, value):
+        # Validate Plaid token format
+        if not value or len(value) < 20:
+            raise serializers.ValidationError('Invalid Plaid access token format')
         return value
     
     def validate(self, data):
-        source_type = data.get('source_type')
-        
-        if source_type == 'youtube' and not data.get('source_url'):
-            raise serializers.ValidationError('YouTube URL is required for youtube source type')
-        
-        if source_type == 'file' and not data.get('file_reference'):
-            raise serializers.ValidationError('File reference is required for file source type')
-        
-        if source_type == 'text' and not data.get('raw_text'):
-            raise serializers.ValidationError('Text content is required for text source type')
-        
+        # Additional validation can be added here
+        # e.g., check if account already exists for this institution
         return data
 
 # ✅ Good view validation
-class SourceContentUploadView(APIView):
+class AccountConnectionView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        serializer = SourceContentUploadSerializer(data=request.data)
+        serializer = AccountConnectionSerializer(data=request.data)
         
         if not serializer.is_valid():
             return Response({
@@ -357,33 +321,28 @@ class SourceContentUploadView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Process validated data
-        source_type = serializer.validated_data['source_type']
-        title = serializer.validated_data.get('title', 'Untitled')
+        plaid_token = serializer.validated_data['plaid_access_token']
+        institution_id = serializer.validated_data['institution_id']
         
-        # Create source content
-        source_content = SourceContent.objects.create(
+        # Create account with encrypted token
+        account = Account.objects.create(
             user=request.user,
-            title=title,
-            source_type=source_type,
-            source_url=serializer.validated_data.get('source_url'),
-            file_reference_id=serializer.validated_data.get('file_reference'),
-            raw_text=serializer.validated_data.get('raw_text'),
-            status='pending'
+            institution_name=institution_id,
+            plaid_access_token=encrypt_token(plaid_token),  # Encrypt before storing
+            is_active=True
         )
         
-        # Start transcription if needed
-        if source_type in ['youtube', 'file']:
-            transcribe_content_task.delay(source_content.id)
+        # Start syncing transactions
+        sync_account_transactions.delay(account.id)
         
         return Response({
             'status': 'success',
             'data': {
-                'id': source_content.id,
-                'title': source_content.title,
-                'source_type': source_content.source_type,
-                'status': source_content.status
+                'id': account.id,
+                'institution_name': institution_id,
+                'is_active': account.is_active
             },
-            'message': 'Source content uploaded successfully'
+            'message': 'Account connected successfully'
         }, status=status.HTTP_201_CREATED)
 ```
 
@@ -414,28 +373,18 @@ class UsageLimitMixin:
             return
         
         # Check subscription limits
-        if operation_type == 'source_upload':
+        if operation_type == 'account_connection':
             if subscription.tier == 'free':
-                if user.source_contents.count() >= 10:
-                    raise PermissionDenied('Free tier limit: 10 source contents')
+                if user.accounts.count() >= 1:
+                    raise PermissionDenied('Free tier limit: 1 account')
             elif subscription.tier == 'pro':
-                if user.source_contents.count() >= 100:
-                    raise PermissionDenied('Pro tier limit: 100 source contents')
-        
-        if operation_type == 'content_generation':
-            if subscription.tier == 'free':
-                # Check daily generation limit
-                today_generations = GeneratedContent.objects.filter(
-                    user=user,
-                    created_at__date=timezone.now().date()
-                ).count()
-                if today_generations >= 5:
-                    raise PermissionDenied('Free tier limit: 5 generations per day')
+                if user.accounts.count() >= 10:
+                    raise PermissionDenied('Pro tier limit: 10 accounts')
 
-class SourceContentViewSet(UsageLimitMixin, viewsets.ModelViewSet):
+class AccountViewSet(UsageLimitMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         # Check usage limits before creation
-        self.check_usage_limits(request, 'source_upload')
+        self.check_usage_limits(request, 'account_connection')
         
         return super().create(request, *args, **kwargs)
 ```
@@ -450,10 +399,10 @@ Use consistent WebSocket event patterns:
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 
-class TranscriptionStatusConsumer(AsyncWebsocketConsumer):
+class AccountSyncConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.transcription_id = self.scope['url_route']['kwargs']['transcription_id']
-        self.group_name = f'transcription_{self.transcription_id}'
+        self.account_id = self.scope['url_route']['kwargs']['account_id']
+        self.group_name = f'account_{self.account_id}'
         
         await self.channel_layer.group_add(
             self.group_name,
@@ -517,33 +466,23 @@ urlpatterns = [
 ]
 
 # ✅ Good version-specific serializers
-class SourceContentV1Serializer(serializers.ModelSerializer):
+class TransactionV1Serializer(serializers.ModelSerializer):
     class Meta:
-        model = SourceContent
-        fields = ['id', 'title', 'source_type', 'status', 'created_at']
+        model = Transaction
+        fields = ['id', 'merchant_name', 'amount', 'date', 'created_at']
 
-class SourceContentV2Serializer(serializers.ModelSerializer):
+class TransactionV2Serializer(serializers.ModelSerializer):
     # Enhanced version with additional fields
-    transcription_status = serializers.CharField(source='transcription.status', read_only=True)
-    transcription_text_preview = serializers.SerializerMethodField()
-    duration_formatted = serializers.SerializerMethodField()
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    account_name = serializers.CharField(source='account.institution_name', read_only=True)
+    formatted_amount = serializers.SerializerMethodField()
     
     class Meta:
-        model = SourceContent
-        fields = ['id', 'title', 'source_type', 'status', 'transcription_status', 'transcription_text_preview', 'duration_formatted', 'created_at']
+        model = Transaction
+        fields = ['id', 'merchant_name', 'amount', 'formatted_amount', 'date', 'category_name', 'account_name', 'created_at']
     
-    def get_transcription_text_preview(self, obj):
-        if hasattr(obj, 'transcription') and obj.transcription.text:
-            return obj.transcription.text[:200] + '...' if len(obj.transcription.text) > 200 else obj.transcription.text
-        return None
-    
-    def get_duration_formatted(self, obj):
-        duration = obj.get_duration()
-        if duration:
-            minutes = duration // 60
-            seconds = duration % 60
-            return f"{minutes}m {seconds}s"
-        return None
+    def get_formatted_amount(self, obj):
+        return f"${abs(obj.amount):,.2f}"
 ```
 
 ## Documentation
@@ -557,19 +496,19 @@ from rest_framework import serializers, viewsets
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-class SourceContentViewSet(viewsets.ModelViewSet):
+class TransactionViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing source content.
+    ViewSet for managing transactions.
     
-    Provides CRUD operations for user source content with support for
-    uploading, transcription, and content generation.
+    Provides CRUD operations for user transactions with support for
+    filtering, categorization, and account management.
     """
     
     @swagger_auto_schema(
-        operation_description="Create a new source content",
-        request_body=SourceContentCreateSerializer,
+        operation_description="Create a new transaction",
+        request_body=TransactionCreateSerializer,
         responses={
-            201: openapi.Response('Source content created', SourceContentSerializer),
+            201: openapi.Response('Transaction created', TransactionSerializer),
             400: openapi.Response('Validation error'),
             401: openapi.Response('Authentication required'),
         }
@@ -578,29 +517,31 @@ class SourceContentViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
     
     @swagger_auto_schema(
-        operation_description="Start transcription for source content",
+        operation_description="Categorize a transaction",
         responses={
-            200: openapi.Response('Transcription started'),
-            400: openapi.Response('Invalid request'),
-            404: openapi.Response('Source content not found'),
+            200: openapi.Response('Transaction categorized'),
+            400: openapi.Response('Invalid category'),
+            404: openapi.Response('Transaction not found'),
         }
     )
     @action(detail=True, methods=['post'])
-    def transcribe(self, request, pk=None):
-        """Start transcription process for the source content."""
-        source_content = self.get_object()
+    def categorize(self, request, pk=None):
+        """Categorize the transaction."""
+        transaction = self.get_object()
+        category_id = request.data.get('category_id')
         
-        if source_content.status != 'completed':
+        if not category_id:
             return Response({
                 'status': 'error',
-                'message': 'Source content must be completed before transcription'
+                'message': 'Category ID required'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        transcribe_content_task.delay(source_content.id)
+        transaction.category_id = category_id
+        transaction.save()
         
         return Response({
             'status': 'success',
-            'message': 'Transcription started'
+            'message': 'Transaction categorized'
         })
 ```
 

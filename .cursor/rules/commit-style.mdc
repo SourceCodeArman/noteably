@@ -4,7 +4,7 @@ alwaysApply: false
 ---
 # Commit Style
 
-This rule ensures all commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification for clarity, automation, and consistency across the Noteably project.
+This rule ensures all commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification for clarity, automation, and consistency across the Cashly project.
 
 ## Commit Message Format
 

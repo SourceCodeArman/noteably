@@ -4,7 +4,7 @@ alwaysApply: false
 ---
 # Test Coverage
 
-This rule enforces comprehensive test coverage guidelines and testing best practices for the Noteably platform.
+This rule enforces comprehensive test coverage guidelines and testing best practices for the Cashly platform.
 
 ## Coverage Requirements
 

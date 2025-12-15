@@ -1,0 +1,289 @@
+---
+description: Backend development rules for Django, DRF, Celery, and integrations
+globs: backend/**/*.py
+alwaysApply: true
+---
+
+# Backend Development Rules
+
+## Django & DRF Conventions
+
+- **Models:**
+  - Use UUID primary keys: `id = models.UUIDField(primary_key=True, default=uuid.uuid4)`
+  - Add timestamps: `created_at`, `updated_at`
+  - Use `JSONB` fields for flexible data (Supabase optimized)
+  - Set `on_delete` behavior explicitly (CASCADE or PROTECT)
+
+- **Serializers:**
+  - Use `ModelSerializer` for database models
+  - Validate subscription tier for restricted features
+  - Use `read_only_fields` for auto-generated fields
+  - Add custom validation methods for business logic
+
+- **Views:**
+  - Use viewsets for RESTful resources
+  - Use `@action` decorator for custom endpoints
+  - Return structured responses: `{"success": true, "data": {...}}`
+  - Handle errors with custom exception handlers
+
+- **Permissions:**
+  - Check Supabase auth token in middleware
+  - Verify user owns resources (job, content, materials)
+  - Enforce subscription tier limits before processing
+  - Return `402 Payment Required` for gated features
+
+## API Endpoint Structure
+
+```python
+# ✅ DO: Single unified processing endpoint
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def process_upload(request):
+    # Validate file and material selection
+    file = request.FILES.get('file')
+    material_types = request.data.get('material_types', [])
+    
+    # Check subscription limits
+    subscription = get_user_subscription(request.user)
+    if not subscription.can_upload():
+        return Response({'error': 'Monthly limit reached'}, status=429)
+    
+    # Create job and queue processing
+    job = create_job(request.user, file, material_types)
+    queue_processing_task.delay(job.id)
+    
+    return Response({
+        'job_id': str(job.id),
+        'status': 'queued',
+        'estimated_time': estimate_processing_time(file)
+    })
+```
+
+## Celery Tasks
+
+- **Task Structure:**
+  ```python
+  @shared_task(bind=True, max_retries=3)
+  def process_job(self, job_id):
+      """Main orchestration task for upload-to-materials flow."""
+      try:
+          job = Job.objects.get(id=job_id)
+          
+          # Step 1: Transcribe with streaming
+          transcript = transcribe_with_streaming(job)
+          
+          # Step 2: Generate materials
+          for material_type in job.material_types:
+              generate_material(job, transcript, material_type)
+          
+          # Step 3: Mark complete
+          job.status = 'completed'
+          job.save()
+          
+          emit_websocket_event(job.id, 'complete', {...})
+      except Exception as exc:
+          self.retry(exc=exc, countdown=exponential_backoff(self.request.retries))
+  ```
+
+- **Best Practices:**
+  - Use `bind=True` for retry access
+  - Emit WebSocket events for progress
+  - Handle transient errors with retry
+  - Log errors with full context
+
+## Integration Patterns
+
+### AssemblyAI (Streaming Transcription)
+
+```python
+# ✅ DO: Stream partial transcripts
+async def transcribe_with_streaming(job):
+    url = f"https://api.assemblyai.com/v2/realtime/ws"
+    
+    async with websockets.connect(url) as ws:
+        # Send audio
+        await ws.send(audio_data)
+        
+        # Receive streaming updates
+        async for message in ws:
+            partial = json.loads(message)
+            
+            # Emit to frontend via Django Channels
+            await channel_layer.send(
+                f"job_{job.id}",
+                {
+                    "type": "transcript.partial",
+                    "text": partial['text'],
+                    "progress": partial['audio_start'] / total_duration
+                }
+            )
+    
+    # Get final transcript
+    return await get_final_transcript(transcript_id)
+```
+
+### Gemini (Content Generation)
+
+```python
+# ✅ DO: Use prompt templates and appropriate models
+def generate_material(job, transcript, material_type):
+    # Select model based on complexity
+    model = 'gemini-1.5-flash' if material_type in ['summary', 'notes'] else 'gemini-1.5-pro'
+    
+    # Build material-specific prompt
+    prompt = build_prompt(material_type, transcript)
+    
+    # Call Gemini API
+    response = genai.generate(
+        model=model,
+        prompt=prompt,
+        temperature=0.7 if material_type == 'quiz' else 0.4
+    )
+    
+    # Parse and structure
+    parsed = parse_content(response.text, material_type)
+    
+    # Save to database
+    GeneratedMaterial.objects.create(
+        job=job,
+        material_type=material_type,
+        content=parsed,
+        gemini_model=model
+    )
+```
+
+### Cloudflare R2 (Storage)
+
+```python
+# ✅ DO: Use boto3 with R2 endpoint
+import boto3
+
+r2_client = boto3.client(
+    's3',
+    endpoint_url=os.getenv('R2_ENDPOINT'),
+    aws_access_key_id=os.getenv('R2_ACCESS_KEY'),
+    aws_secret_access_key=os.getenv('R2_SECRET_KEY')
+)
+
+def upload_to_r2(file, key):
+    r2_client.upload_fileobj(
+        file,
+        os.getenv('R2_BUCKET'),
+        key,
+        ExtraArgs={'ContentType': file.content_type}
+    )
+    return f"{os.getenv('R2_PUBLIC_URL')}/{key}"
+```
+
+### Supabase (Database & Auth)
+
+```python
+# ✅ DO: Use Supabase client for real-time features
+from supabase import create_client
+
+supabase = create_client(
+    os.getenv('SUPABASE_URL'),
+    os.getenv('SUPABASE_KEY')
+)
+
+# Query with RLS (Row Level Security)
+def get_user_jobs(user_id):
+    response = supabase.table('jobs').select('*').eq('user_id', user_id).execute()
+    return response.data
+
+# Real-time subscriptions
+def subscribe_to_job_updates(job_id, callback):
+    supabase.table('jobs').on('UPDATE', callback).eq('id', job_id).subscribe()
+```
+
+## WebSocket Events
+
+```python
+# ✅ DO: Use structured event types
+WEBSOCKET_EVENTS = {
+    'transcript_partial': {'type', 'text', 'progress'},
+    'transcript_complete': {'type', 'full_text', 'word_timestamps', 'speakers'},
+    'material_generating': {'type', 'material_type'},
+    'material_generated': {'type', 'material_type', 'content'},
+    'complete': {'type', 'transcript', 'materials'},
+    'error': {'type', 'error_message', 'retry_available'}
+}
+
+# Emit events via Django Channels
+async def emit_event(job_id, event_type, data):
+    await channel_layer.group_send(
+        f"job_{job_id}",
+        {"type": "websocket.message", "event": event_type, **data}
+    )
+```
+
+## Error Handling
+
+```python
+# ✅ DO: Classify errors and handle appropriately
+class TranscriptionError(Exception):
+    """Base exception for transcription failures."""
+    pass
+
+class RateLimitError(TranscriptionError):
+    """API rate limit exceeded."""
+    retryable = True
+    retry_after = 60
+
+class InvalidFileError(TranscriptionError):
+    """File format not supported."""
+    retryable = False
+
+def handle_error(error, context):
+    if isinstance(error, RateLimitError):
+        # Retry with exponential backoff
+        return {'action': 'retry', 'delay': error.retry_after}
+    elif isinstance(error, InvalidFileError):
+        # User error, don't retry
+        return {'action': 'fail', 'message': str(error)}
+    else:
+        # Unknown error, log and retry once
+        logger.error(f"Unexpected error: {error}", extra=context)
+        return {'action': 'retry', 'max_attempts': 1}
+```
+
+## Testing
+
+```python
+# ✅ DO: Test with realistic data and mocks
+from django.test import TestCase
+from unittest.mock import patch, Mock
+
+class ProcessJobTest(TestCase):
+    @patch('backend.apps.transcription.assemblyai_client.transcribe')
+    @patch('backend.apps.generation.gemini_client.generate')
+    def test_full_pipeline(self, mock_gemini, mock_assemblyai):
+        # Mock external APIs
+        mock_assemblyai.return_value = {'text': 'Sample transcript'}
+        mock_gemini.return_value = {'summary': 'Sample summary'}
+        
+        # Create job
+        job = Job.objects.create(
+            user=self.user,
+            material_types=['summary'],
+            storage_url='s3://bucket/file.mp3'
+        )
+        
+        # Process
+        process_job(job.id)
+        
+        # Verify results
+        job.refresh_from_db()
+        self.assertEqual(job.status, 'completed')
+        self.assertEqual(job.generated_materials.count(), 1)
+```
+
+## Performance Optimization
+
+- Use `select_related()` and `prefetch_related()` for queries
+- Cache frequently accessed data with Redis
+- Use database indexes on foreign keys and query fields
+- Batch database operations when possible
+- Use `bulk_create()` for multiple inserts
+- Implement pagination for list endpoints
+- Use `defer()` and `only()` for large models

@@ -4,7 +4,7 @@ alwaysApply: false
 ---
 # Naming Conventions
 
-This rule enforces consistent naming conventions to improve code readability and maintainability across the Noteably platform.
+This rule enforces consistent naming conventions to improve code readability and maintainability across the Cashly platform.
 
 ## Backend (Python Django REST)
 
@@ -14,21 +14,21 @@ This rule enforces consistent naming conventions to improve code readability and
 
 ```python
 # ✅ Good examples
-def transcribe_source_content(source_content_id, user_id):
-    transcription_provider = request.data.get('transcription_provider')
-    transcription_status = 'pending'
+def sync_account_transactions(account_id, user_id):
+    plaid_token = request.data.get('plaid_access_token')
+    sync_status = 'pending'
     
-def normalize_transcription_data(transcription_data):
-    text = transcription_data.get('text')
+def normalize_transaction_data(transaction_data):
+    amount = transaction_data.get('amount')
     return normalized_data
 
 # ❌ Bad examples
-def transcribeSourceContent(sourceContentId, userId):
-    transcriptionProvider = request.data.get('transcription_provider')
-    transcriptionStatus = 'pending'
+def syncAccountTransactions(accountId, userId):
+    plaidToken = request.data.get('plaid_access_token')
+    syncStatus = 'pending'
     
-def normalizeTranscriptionData(transcriptionData):
-    text = transcriptionData.get('text')
+def normalizeTransactionData(transactionData):
+    amount = transactionData.get('amount')
     return normalizedData
 ```
 
@@ -39,30 +39,30 @@ def normalizeTranscriptionData(transcriptionData):
 
 ```python
 # ✅ Good examples
-class SourceContent(models.Model):
-    title = models.CharField(max_length=200)
-    source_type = models.CharField(max_length=20)
+class Transaction(models.Model):
+    merchant_name = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
 
-class SourceContentSerializer(serializers.ModelSerializer):
+class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SourceContent
+        model = Transaction
         fields = '__all__'
 
-class SourceContentViewSet(viewsets.ModelViewSet):
-    queryset = SourceContent.objects.all()
-    serializer_class = SourceContentSerializer
+class TransactionViewSet(viewsets.ModelViewSet):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
 
-class TranscriptionError(Exception):
+class ProcessingTaskError(Exception):
     pass
 
 # ❌ Bad examples
-class sourceContent(models.Model):
+class summary(models.Model):
     title = models.CharField(max_length=200)
 
-class sourceContentSerializer(serializers.ModelSerializer):
+class summarySerializer(serializers.ModelSerializer):
     pass
 
-class source_content_view(viewsets.ModelViewSet):
+class summary_view(viewsets.ModelViewSet):
     pass
 ```
 
@@ -71,15 +71,14 @@ class source_content_view(viewsets.ModelViewSet):
 
 ```python
 # ✅ Good examples
-MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
-ALLOWED_MIME_TYPES = ['audio/mpeg', 'audio/wav', 'video/mp4', 'video/webm']
-ALLOWED_TRANSCRIPTION_PROVIDERS = ['whisper', 'assemblyai']
-DEFAULT_SUMMARY_LENGTH = 'medium'
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+ALLOWED_MIME_TYPES = ['audio/mpeg', 'video/mp4']
+DEFAULT_RETENTION_DAYS = 30
 
 # ❌ Bad examples
-maxFileSize = 500 * 1024 * 1024
+maxFileSize = 100 * 1024 * 1024
 allowedMimeTypes = ['audio/mpeg', 'video/mp4']
-defaultSummaryLength = 'medium'
+defaultRetentionDays = 30
 ```
 
 ### File Names
@@ -108,22 +107,22 @@ defaultSummaryLength = 'medium'
 ```javascript
 // ✅ Good examples
 const uploadProgress = 0.5;
-const transcriptionData = await fetchTranscription(id);
-const isTranscriptionComplete = status === 'completed';
+const summaryData = await fetchSummary(id);
+const isProcessingComplete = status === 'completed';
 
-function handleSourceUpload(event) {
+function handleFileUpload(event) {
     const selectedFile = event.target.files[0];
-    return processSourceFile(selectedFile);
+    return processFile(selectedFile);
 }
 
 // ❌ Bad examples
 const upload_progress = 0.5;
-const transcription_data = await fetchTranscription(id);
-const is_transcription_complete = status === 'completed';
+const summary_data = await fetchSummary(id);
+const is_processing_complete = status === 'completed';
 
-function handle_source_upload(event) {
+function handle_file_upload(event) {
     const selected_file = event.target.files[0];
-    return process_source_file(selected_file);
+    return process_file(selected_file);
 }
 ```
 
@@ -133,28 +132,28 @@ function handle_source_upload(event) {
 
 ```jsx
 // ✅ Good examples
-function UploadInterface() {
-    return <div>Upload Interface</div>;
+function UploadPage() {
+    return <div>Upload Page</div>;
 }
 
-function TranscriptionResult({ transcription }) {
-    return <div>{transcription.text}</div>;
+function SummaryResult({ summary }) {
+    return <div>{summary.title}</div>;
 }
 
-function useTranscriptionWebSocket(transcriptionId) {
+function useSummaryWebSocket(summaryId) {
     // Hook logic
 }
 
 // ❌ Bad examples
-function uploadInterface() {
-    return <div>Upload Interface</div>;
+function uploadPage() {
+    return <div>Upload Page</div>;
 }
 
-function transcription_result({ transcription }) {
-    return <div>{transcription.text}</div>;
+function summary_result({ summary }) {
+    return <div>{summary.title}</div>;
 }
 
-function use_transcription_websocket(transcriptionId) {
+function use_summary_websocket(summaryId) {
     // Hook logic
 }
 ```
@@ -164,13 +163,13 @@ function use_transcription_websocket(transcriptionId) {
 
 ```javascript
 // ✅ Good examples
-const MAX_FILE_SIZE = 500 * 1024 * 1024;
-const API_BASE_URL = 'https://api.noteably.com';
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const API_BASE_URL = 'https://api.cashly.com';
 const DEFAULT_TIMEOUT = 5000;
 
 // ❌ Bad examples
-const maxFileSize = 500 * 1024 * 1024;
-const apiBaseUrl = 'https://api.noteably.com';
+const maxFileSize = 100 * 1024 * 1024;
+const apiBaseUrl = 'https://api.cashly.com';
 const defaultTimeout = 5000;
 ```
 
@@ -200,19 +199,15 @@ const defaultTimeout = 5000;
 ```python
 # ✅ Good examples
 # apps/accounts/
-# apps/ingestion/
-# apps/transcription/
-# apps/generation/
-# apps/storage/
-# apps/tasks/
-# apps/analytics/
+# apps/api/
+# apps/subscriptions/
+# apps/billing/
 
 # ❌ Bad examples
 # apps/acc/
-# apps/ingest/
-# apps/trans/
-# apps/gen/
-# apps/store/
+# apps/api_v1/
+# apps/subs/
+# apps/bill/
 ```
 
 ### API Endpoints
@@ -221,18 +216,14 @@ const defaultTimeout = 5000;
 
 ```python
 # ✅ Good examples
-# /api/v1/sources/
-# /api/v1/transcriptions/
-# /api/v1/generated-content/
 # /api/v1/summaries/
-# /api/v1/flashcards/
-# /api/v1/quizzes/
+# /api/v1/usage-counters/
+# /api/v1/subscription-tiers/
 
 # ❌ Bad examples
-# /api/v1/Source/
-# /api/v1/transcriptionList/
-# /api/v1/generated_content/
 # /api/v1/Summary/
+# /api/v1/usageCounters/
+# /api/v1/subscription_tiers/
 ```
 
 ## Rationale

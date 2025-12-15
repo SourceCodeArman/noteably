@@ -1,53 +1,50 @@
 ---
-description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
+description: Guidelines for creating and maintaining Cursor rules for Noteably project
 globs: .cursor/rules/*.mdc
 alwaysApply: true
 ---
 
-- **Required Rule Structure:**
+# Cursor Rules for Noteably
+
+## Project-Specific Rules
+
+The following rules are tailored for the Noteably AI study material generator:
+
+- **[project.mdc](mdc:.cursor/rules/project.mdc)** - Project overview, tech stack, architecture
+- **[backend.mdc](mdc:.cursor/rules/backend.mdc)** - Django, DRF, Celery, API integrations
+- **[frontend.mdc](mdc:.cursor/rules/frontend.mdc)** - Next.js, React, TypeScript, WebSocket
+- **[database.mdc](mdc:.cursor/rules/database.mdc)** - Supabase, schema design, RLS policies
+
+## Rule Structure
+
+- **Required Frontmatter:**
   ```markdown
   ---
   description: Clear, one-line description of what the rule enforces
   globs: path/to/files/*.ext, other/path/**/*
   alwaysApply: boolean
   ---
-
-  - **Main Points in Bold**
-    - Sub-points with details
-    - Examples and explanations
   ```
 
-- **File References:**
-  - Use `[filename](mdc:path/to/file)` ([filename](mdc:filename)) to reference files
-  - Example: [prisma.mdc](mdc:.cursor/rules/prisma.mdc) for rule references
-  - Example: [schema.prisma](mdc:prisma/schema.prisma) for code references
-
-- **Code Examples:**
-  - Use language-specific code blocks
-  ```typescript
-  // ✅ DO: Show good examples
-  const goodExample = true;
-  
-  // ❌ DON'T: Show anti-patterns
-  const badExample = false;
-  ```
-
-- **Rule Content Guidelines:**
+- **Content Guidelines:**
   - Start with high-level overview
-  - Include specific, actionable requirements
-  - Show examples of correct implementation
-  - Reference existing code when possible
-  - Keep rules DRY by referencing other rules
+  - Use ✅ DO and ❌ DON'T examples
+  - Show code examples with language tags
+  - Reference actual patterns from PRD
+  - Keep rules DRY by cross-referencing
 
-- **Rule Maintenance:**
-  - Update rules when new patterns emerge
-  - Add examples from actual codebase
-  - Remove outdated patterns
-  - Cross-reference related rules
+## Key Patterns
 
-- **Best Practices:**
-  - Use bullet points for clarity
-  - Keep descriptions concise
-  - Include both DO and DON'T examples
-  - Reference actual code over theoretical examples
-  - Use consistent formatting across rules 
+- **Single-Page Flow**: All processing happens on one page with WebSocket streaming
+- **Material Selection First**: User chooses outputs before processing starts
+- **Tier-Based Features**: Check subscription before gated features (PDF export)
+- **Real-Time Updates**: WebSocket events for transcription and generation progress
+- **Simplified Providers**: AssemblyAI for transcription, Gemini for generation
+
+## References
+
+- **Main Documentation**: [docs/PRD.md](mdc:docs/PRD.md)
+- **Technology Stack**: Supabase, Cloudflare R2, AssemblyAI, Gemini
+- **Frontend**: Next.js 14+ App Router, TypeScript, Tailwind
+- **Backend**: Django 4.2+, DRF, Celery, Django Channels
+ 

@@ -4,7 +4,7 @@ alwaysApply: false
 ---
 # Code Structure
 
-This rule enforces consistent code organization and structure patterns across the Noteably platform to improve maintainability and developer experience.
+This rule enforces consistent code organization and structure patterns across the Cashly platform to improve maintainability and developer experience.
 
 ## Backend Structure
 
@@ -51,21 +51,21 @@ class TimestampedModel(models.Model):
         abstract = True
 
 # Main models
-class SourceContent(TimestampedModel):
+class Summary(TimestampedModel):
     title = models.CharField(max_length=MAX_TITLE_LENGTH)
-    source_type = models.CharField(max_length=20)
+    content = models.TextField()
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'Source Content'
-        verbose_name_plural = 'Source Contents'
+        verbose_name = 'Summary'
+        verbose_name_plural = 'Summaries'
     
     def __str__(self):
         return self.title
 
 # Managers
-class SourceContentManager(models.Manager):
+class SummaryManager(models.Manager):
     def for_user(self, user):
         return self.filter(user=user)
 ```
@@ -77,32 +77,32 @@ from rest_framework import serializers
 from .models import Summary
 
 # Base serializers
-class BaseSourceContentSerializer(serializers.ModelSerializer):
+class BaseSummarySerializer(serializers.ModelSerializer):
     class Meta:
-        model = SourceContent
-        fields = ['id', 'title', 'source_type', 'created_at']
+        model = Summary
+        fields = ['id', 'title', 'created_at']
 
 # Specific serializers
-class SourceContentListSerializer(BaseSourceContentSerializer):
-    transcription_status = serializers.CharField(source='transcription.status', read_only=True)
+class SummaryListSerializer(BaseSummarySerializer):
+    pass
 
-class SourceContentDetailSerializer(BaseSourceContentSerializer):
-    transcription_text = serializers.CharField(source='transcription.text', read_only=True)
-    status = serializers.CharField(read_only=True)
+class SummaryDetailSerializer(BaseSummarySerializer):
+    content = serializers.CharField()
+    processing_status = serializers.CharField(read_only=True)
     
-    class Meta(BaseSourceContentSerializer.Meta):
-        fields = BaseSourceContentSerializer.Meta.fields + [
-            'transcription_text', 'status', 'metadata'
+    class Meta(BaseSummarySerializer.Meta):
+        fields = BaseSummarySerializer.Meta.fields + [
+            'content', 'processing_status'
         ]
 
-class SourceContentCreateSerializer(serializers.ModelSerializer):
+class SummaryCreateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SourceContent
-        fields = ['title', 'source_type', 'source_url', 'file_reference', 'raw_text']
+        model = Summary
+        fields = ['title', 'content']
     
     def validate_title(self, value):
-        if len(value) < 2:
-            raise serializers.ValidationError("Title must be at least 2 characters")
+        if len(value) < 5:
+            raise serializers.ValidationError("Title must be at least 5 characters")
         return value
 ```
 
@@ -116,26 +116,24 @@ from .models import Summary
 from .serializers import SummaryListSerializer, SummaryDetailSerializer
 from .tasks import process_summary_task
 
-class SourceContentViewSet(viewsets.ModelViewSet):
-    queryset = SourceContent.objects.all()
-    serializer_class = SourceContentListSerializer
+class SummaryViewSet(viewsets.ModelViewSet):
+    queryset = Summary.objects.all()
+    serializer_class = SummaryListSerializer
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
-            return SourceContentDetailSerializer
-        elif self.action == 'create':
-            return SourceContentCreateSerializer
+            return SummaryDetailSerializer
         return self.serializer_class
     
     def perform_create(self, serializer):
-        source_content = serializer.save(user=self.request.user)
-        transcribe_content_task.delay(source_content.id)
+        summary = serializer.save(user=self.request.user)
+        process_summary_task.delay(summary.id)
     
     @action(detail=True, methods=['post'])
-    def transcribe(self, request, pk=None):
-        source_content = self.get_object()
-        transcribe_content_task.delay(source_content.id)
-        return Response({'status': 'transcription_started'})
+    def regenerate(self, request, pk=None):
+        summary = self.get_object()
+        process_summary_task.delay(summary.id)
+        return Response({'status': 'regeneration_started'})
 ```
 
 #### Tasks (`tasks.py`)
@@ -147,43 +145,26 @@ from .models import Summary
 from .ai_utils import transcribe_audio, generate_summary
 
 @shared_task(bind=True, max_retries=3)
-def transcribe_content_task(self, source_content_id):
+def process_audio_summary(self, summary_id):
     try:
-        from apps.ingestion.models import SourceContent
-        from apps.transcription.models import Transcription
-        from apps.transcription.provider_selector import select_provider
-        from apps.transcription.whisper_client import transcribe_with_whisper
-        
-        source_content = SourceContent.objects.get(id=source_content_id)
+        summary = Summary.objects.get(id=summary_id)
         
         # Update status
-        source_content.status = 'processing'
-        source_content.save()
+        summary.processing_status = 'transcribing'
+        summary.save()
         
-        # Select provider and transcribe
-        provider = select_provider(
-            content_type=source_content.source_type,
-            duration=source_content.get_duration()
-        )
+        # Process audio
+        transcript = transcribe_audio(summary.audio_file)
         
-        transcription_result = transcribe_with_whisper(
-            file_reference=source_content.file_reference,
-            language=source_content.metadata.get('language')
-        )
+        # Generate summary
+        summary_content = generate_summary(transcript)
         
-        # Create transcription record
-        Transcription.objects.create(
-            source_content=source_content,
-            text=transcription_result['text'],
-            status='completed',
-            provider=provider
-        )
+        # Update summary
+        summary.content = summary_content
+        summary.processing_status = 'completed'
+        summary.save()
         
-        # Update source content status
-        source_content.status = 'completed'
-        source_content.save()
-        
-        return f"Source content {source_content_id} transcribed successfully"
+        return f"Summary {summary_id} processed successfully"
         
     except Exception as exc:
         self.retry(countdown=60, exc=exc)
@@ -222,37 +203,22 @@ frontend/src/
 │   │   ├── Button.jsx
 │   │   ├── Modal.jsx
 │   │   └── LoadingSpinner.jsx
-│   ├── UploadInterface/ # Upload/Import Interface feature
-│   │   ├── UploadInterface.jsx
-│   │   ├── FileUpload.jsx
-│   │   └── YouTubeInput.jsx
-│   ├── StatusDisplay/   # Real-time Status Updates feature
-│   │   ├── StatusDisplay.jsx
-│   │   └── ProgressBar.jsx
-│   ├── OutputViewer/     # Output Viewer feature
-│   │   ├── OutputViewer.jsx
-│   │   ├── SummaryViewer.jsx
-│   │   └── NotesViewer.jsx
 │   ├── pages/            # Page-level components
-│   │   ├── Dashboard.jsx
-│   │   ├── History.jsx
-│   │   └── ContentDetail.jsx
+│   │   ├── UploadPage.jsx
+│   │   ├── HistoryPage.jsx
+│   │   └── SummaryPage.jsx
 │   └── layout/           # Layout components
 │       ├── Navbar.jsx
 │       └── Footer.jsx
 ├── hooks/                # Custom React hooks
 │   ├── useAuth.js
-│   ├── useTranscriptionWebSocket.js
-│   ├── useSourceContent.js
-│   └── useGeneratedContent.js
+│   ├── useSummaryWebSocket.js
+│   └── useFileUpload.js
 ├── context/              # React context providers
 │   ├── AuthContext.js
-│   └── ContentContext.js
-├── services/             # API services
-│   ├── api.js
-│   ├── websocket.js
-│   └── export.js
+│   └── SummaryContext.js
 ├── utils/                # Utility functions
+│   ├── api.js
 │   ├── formatters.js
 │   └── validators.js
 ├── assets/               # Static assets
@@ -284,19 +250,16 @@ import { uploadFile } from '../../utils/api';
 // Constants
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
-function UploadInterface() {
+function UploadPage() {
     // State
     const [file, setFile] = useState(null);
-    const [sourceType, setSourceType] = useState('file');
-    const [youtubeUrl, setYoutubeUrl] = useState('');
-    const [rawText, setRawText] = useState('');
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     
     // Hooks
     const { user } = useAuth();
     const navigate = useNavigate();
-    const { connect, disconnect } = useTranscriptionWebSocket();
+    const { connect, disconnect } = useSummaryWebSocket();
     
     // Effects
     useEffect(() => {
@@ -308,7 +271,7 @@ function UploadInterface() {
     const handleFileSelect = (event) => {
         const selectedFile = event.target.files[0];
         if (selectedFile && selectedFile.size > MAX_FILE_SIZE) {
-            setError('File size exceeds 500MB limit');
+            setError('File size exceeds 100MB limit');
             return;
         }
         setFile(selectedFile);
@@ -317,28 +280,14 @@ function UploadInterface() {
     
     const handleSubmit = async (event) => {
         event.preventDefault();
+        if (!file) return;
         
         setUploading(true);
-        setError(null);
-        
         try {
-            let sourceContent;
-            
-            if (sourceType === 'file' && file) {
-                sourceContent = await uploadSourceFile(file);
-            } else if (sourceType === 'youtube' && youtubeUrl) {
-                sourceContent = await uploadYouTubeUrl(youtubeUrl);
-            } else if (sourceType === 'text' && rawText) {
-                sourceContent = await uploadTextInput(rawText);
-            } else {
-                setError('Please provide the required input for selected source type');
-                setUploading(false);
-                return;
-            }
-            
-            navigate(`/content/${sourceContent.id}`);
+            const summary = await uploadFile(file);
+            navigate(`/summary/${summary.id}`);
         } catch (err) {
-            setError(err.message || 'Failed to upload content');
+            setError(err.message);
         } finally {
             setUploading(false);
         }
@@ -346,50 +295,21 @@ function UploadInterface() {
     
     // Render
     return (
-        <div className="upload-interface">
-            <h1>Upload Content</h1>
+        <div className="upload-page">
+            <h1>Upload Audio/Video</h1>
             
             <form onSubmit={handleSubmit}>
-                <select 
-                    value={sourceType} 
-                    onChange={(e) => setSourceType(e.target.value)}
-                >
-                    <option value="file">File Upload</option>
-                    <option value="youtube">YouTube URL</option>
-                    <option value="text">Text Input</option>
-                </select>
-                
-                {sourceType === 'file' && (
-                    <input
-                        type="file"
-                        accept="audio/*,video/*,text/*"
-                        onChange={handleFileSelect}
-                    />
-                )}
-                
-                {sourceType === 'youtube' && (
-                    <input
-                        type="url"
-                        placeholder="Enter YouTube URL"
-                        value={youtubeUrl}
-                        onChange={(e) => setYoutubeUrl(e.target.value)}
-                    />
-                )}
-                
-                {sourceType === 'text' && (
-                    <textarea
-                        placeholder="Paste or type your text here"
-                        value={rawText}
-                        onChange={(e) => setRawText(e.target.value)}
-                        rows={10}
-                    />
-                )}
+                <input
+                    type="file"
+                    accept="audio/*,video/*"
+                    onChange={handleFileSelect}
+                />
                 
                 {error && <div className="error">{error}</div>}
                 
                 <Button
                     type="submit"
-                    disabled={uploading}
+                    disabled={!file || uploading}
                 >
                     {uploading ? <LoadingSpinner /> : 'Upload'}
                 </Button>
@@ -412,12 +332,11 @@ import { api } from '../utils/api';
 const RECONNECT_DELAY = 5000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
-function useTranscriptionWebSocket(transcriptionId) {
+function useSummaryWebSocket(summaryId) {
     // State
     const [socket, setSocket] = useState(null);
     const [connected, setConnected] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [status, setStatus] = useState('pending');
     const [error, setError] = useState(null);
     
     // Dependencies
@@ -425,9 +344,9 @@ function useTranscriptionWebSocket(transcriptionId) {
     
     // Callbacks
     const connect = useCallback(() => {
-        if (!transcriptionId || !token) return;
+        if (!summaryId || !token) return;
         
-        const ws = new WebSocket(`ws://localhost:8000/ws/transcription/${transcriptionId}/`);
+        const ws = new WebSocket(`ws://localhost:8000/ws/summary/${summaryId}/`);
         
         ws.onopen = () => {
             setConnected(true);
@@ -438,9 +357,6 @@ function useTranscriptionWebSocket(transcriptionId) {
             const data = JSON.parse(event.data);
             if (data.type === 'progress') {
                 setProgress(data.progress);
-            }
-            if (data.type === 'status') {
-                setStatus(data.status);
             }
         };
         
@@ -454,7 +370,7 @@ function useTranscriptionWebSocket(transcriptionId) {
         };
         
         setSocket(ws);
-    }, [transcriptionId, token]);
+    }, [summaryId, token]);
     
     const disconnect = useCallback(() => {
         if (socket) {
@@ -474,14 +390,13 @@ function useTranscriptionWebSocket(transcriptionId) {
     return {
         connected,
         progress,
-        status,
         error,
         connect,
         disconnect
     };
 }
 
-export { useTranscriptionWebSocket };
+export { useSummaryWebSocket };
 ```
 
 ### Import Order (Frontend)

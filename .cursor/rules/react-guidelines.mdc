@@ -4,7 +4,7 @@ alwaysApply: false
 ---
 # React Guidelines
 
-This rule enforces React development guidelines and best practices for the Noteably frontend application.
+This rule enforces React development guidelines and best practices for the Cashly frontend application.
 
 ## Component Structure
 
@@ -23,29 +23,27 @@ import ErrorMessage from '../common/ErrorMessage';
 
 // Hooks
 import { useAuth } from '../../hooks/useAuth';
-import { useSourceContent } from '../../hooks/useSourceContent';
-import { useTranscription } from '../../hooks/useTranscription';
-import { useGeneratedContent } from '../../hooks/useGeneratedContent';
+import { useTransactions } from '../../hooks/useTransactions';
+import { useAccounts } from '../../hooks/useAccounts';
 
 // Utils
-import { uploadSource, startTranscription, generateContent } from '../../utils/api';
-import { formatDuration } from '../../utils/formatters';
+import { connectAccount, syncAccount } from '../../utils/api';
+import { formatCurrency } from '../../utils/formatters';
 
 // Constants
 const REFRESH_INTERVAL = 30000; // 30 seconds
 
 function Dashboard() {
     // State
-    const [selectedSource, setSelectedSource] = useState(null);
+    const [selectedAccount, setSelectedAccount] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
     
     // Hooks
     const { user, isAuthenticated } = useAuth();
     const navigate = useNavigate();
-    const { sourceContents, isLoading, refetch } = useSourceContent();
-    const { transcriptions } = useTranscription();
-    const { generatedContents } = useGeneratedContent();
+    const { transactions, isLoading, refetch } = useTransactions();
+    const { accounts, connectAccount: connect } = useAccounts();
     
     // Effects
     useEffect(() => {
@@ -54,7 +52,7 @@ function Dashboard() {
             return;
         }
         
-        // Auto-refresh content every 30 seconds
+        // Auto-refresh transactions every 30 seconds
         const interval = setInterval(() => {
             refetch();
         }, REFRESH_INTERVAL);
@@ -63,29 +61,29 @@ function Dashboard() {
     }, [isAuthenticated, navigate, refetch]);
     
     // Event handlers
-    const handleUploadSource = useCallback(async (file, sourceType) => {
+    const handleConnectAccount = useCallback(async () => {
         setRefreshing(true);
         setError(null);
         
         try {
-            await uploadSource(file, sourceType);
+            await connect();
             await refetch();
         } catch (err) {
-            setError(err.message || 'Failed to upload source');
+            setError(err.message || 'Failed to connect account');
         } finally {
             setRefreshing(false);
         }
-    }, [refetch]);
+    }, [connect, refetch]);
     
-    const handleStartTranscription = useCallback(async (sourceId) => {
+    const handleSyncAccount = useCallback(async (accountId) => {
         setRefreshing(true);
         setError(null);
         
         try {
-            await startTranscription(sourceId);
+            await syncAccount(accountId);
             await refetch();
         } catch (err) {
-            setError(err.message || 'Failed to start transcription');
+            setError(err.message || 'Failed to sync account');
         } finally {
             setRefreshing(false);
         }
@@ -96,25 +94,22 @@ function Dashboard() {
         return null;
     }
     
-    const totalSources = sourceContents.length;
-    const completedTranscriptions = transcriptions.filter(t => t.status === 'completed').length;
+    const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance), 0);
     
     return (
         <div className="dashboard">
             <h1>Dashboard</h1>
             
-            <div className="content-summary">
-                <h2>Your Content</h2>
-                <p className="stats">
-                    {totalSources} sources • {completedTranscriptions} transcriptions • {generatedContents.length} generated materials
-                </p>
+            <div className="account-summary">
+                <h2>Total Balance</h2>
+                <p className="balance">{formatCurrency(totalBalance)}</p>
             </div>
             
-            {sourceContents.length === 0 && (
+            {accounts.length === 0 && (
                 <div className="empty-state">
-                    <p>No content uploaded yet</p>
-                    <Button onClick={() => navigate('/upload')} disabled={refreshing}>
-                        Upload Content
+                    <p>No accounts connected</p>
+                    <Button onClick={handleConnectAccount} disabled={refreshing}>
+                        Connect Account
                     </Button>
                 </div>
             )}
@@ -123,10 +118,10 @@ function Dashboard() {
             
             {isLoading && <LoadingSpinner />}
             
-            {sourceContents && sourceContents.length > 0 && (
-                <div className="recent-content">
-                    <h2>Recent Content</h2>
-                    <SourceContentList sources={sourceContents.slice(0, 10)} />
+            {transactions && transactions.length > 0 && (
+                <div className="recent-transactions">
+                    <h2>Recent Transactions</h2>
+                    <TransactionList transactions={transactions.slice(0, 10)} />
                 </div>
             )}
         </div>
@@ -144,52 +139,46 @@ Use TypeScript-style prop validation and destructuring:
 import React from 'react';
 import PropTypes from 'prop-types';
 
-function SourceContentCard({ 
-    sourceContent, 
-    onView, 
+function TransactionCard({ 
+    transaction, 
+    onEdit, 
     onDelete, 
-    onTranscribe,
     showActions = true,
     className = ''
 }) {
-    const { title, source_type, status, created_at, metadata } = sourceContent;
+    const { merchant_name, amount, date, category, notes } = transaction;
     
     return (
-        <div className={`source-content-card ${className}`}>
-            <div className="source-header">
-                <h3>{title}</h3>
-                <span className={`status-badge ${status}`}>
-                    {status}
+        <div className={`transaction-card ${className}`}>
+            <div className="transaction-header">
+                <h3>{merchant_name}</h3>
+                <span className={`amount ${amount < 0 ? 'expense' : 'income'}`}>
+                    {formatCurrency(amount)}
                 </span>
             </div>
             
-            <p className="source-type">
-                {source_type.charAt(0).toUpperCase() + source_type.slice(1)}
+            <p className="transaction-date">
+                {new Date(date).toLocaleDateString()}
             </p>
             
-            {metadata.duration && (
-                <span className="duration-badge">
-                    {formatDuration(metadata.duration)}
+            {category && (
+                <span className="category-badge">
+                    {category.name}
                 </span>
             )}
             
-            <p className="source-date">
-                {new Date(created_at).toLocaleDateString()}
-            </p>
+            {notes && (
+                <p className="transaction-notes">{notes}</p>
+            )}
             
             {showActions && (
                 <div className="actions">
-                    <Button onClick={() => onView(sourceContent.id)}>
-                        View
+                    <Button onClick={() => onEdit(transaction.id)}>
+                        Edit
                     </Button>
-                    {status === 'completed' && (
-                        <Button onClick={() => onTranscribe(sourceContent.id)}>
-                            Transcribe
-                        </Button>
-                    )}
                     <Button 
                         variant="danger" 
-                        onClick={() => onDelete(sourceContent.id)}
+                        onClick={() => onDelete(transaction.id)}
                     >
                         Delete
                     </Button>
@@ -199,18 +188,17 @@ function SourceContentCard({
     );
 }
 
-SourceContentCard.propTypes = {
-    sourceContent: PropTypes.shape({
+TransactionCard.propTypes = {
+    transaction: PropTypes.shape({
         id: PropTypes.number.isRequired,
-        title: PropTypes.string.isRequired,
-        source_type: PropTypes.string.isRequired,
-        status: PropTypes.string.isRequired,
-        created_at: PropTypes.string.isRequired,
-        metadata: PropTypes.object,
+        merchant_name: PropTypes.string.isRequired,
+        amount: PropTypes.number.isRequired,
+        date: PropTypes.string.isRequired,
+        category: PropTypes.object,
+        notes: PropTypes.string,
     }).isRequired,
-    onView: PropTypes.func.isRequired,
+    onEdit: PropTypes.func.isRequired,
     onDelete: PropTypes.func.isRequired,
-    onTranscribe: PropTypes.func,
     showActions: PropTypes.bool,
     className: PropTypes.string,
 };
@@ -229,9 +217,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { api } from '../utils/api';
 
-function useSourceContent(filters = {}) {
+function useTransactions(filters = {}) {
     // State
-    const [sourceContents, setSourceContents] = useState([]);
+    const [transactions, setTransactions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     
@@ -245,7 +233,7 @@ function useSourceContent(filters = {}) {
     const REFRESH_INTERVAL = 30000; // 30 seconds
     
     // Callbacks
-    const fetchSourceContents = useCallback(async () => {
+    const fetchTransactions = useCallback(async () => {
         if (!token) {
             setIsLoading(false);
             return;
@@ -262,14 +250,14 @@ function useSourceContent(filters = {}) {
             setIsLoading(true);
             setError(null);
             
-            const response = await api.getSourceContents(filters, {
+            const response = await api.getTransactions(filters, {
                 signal: abortControllerRef.current.signal
             });
             
-            setSourceContents(response.data.source_contents);
+            setTransactions(response.data.transactions);
         } catch (err) {
             if (err.name !== 'AbortError') {
-                setError(err.message || 'Failed to fetch source content');
+                setError(err.message || 'Failed to fetch transactions');
             }
         } finally {
             setIsLoading(false);
@@ -277,16 +265,16 @@ function useSourceContent(filters = {}) {
     }, [token, filters]);
     
     const refetch = useCallback(() => {
-        fetchSourceContents();
-    }, [fetchSourceContents]);
+        fetchTransactions();
+    }, [fetchTransactions]);
     
     // Effects
     useEffect(() => {
-        fetchSourceContents();
+        fetchTransactions();
         
-        // Auto-refresh source contents
+        // Auto-refresh transactions
         const interval = setInterval(() => {
-            fetchSourceContents();
+            fetchTransactions();
         }, REFRESH_INTERVAL);
         
         return () => {
@@ -295,18 +283,18 @@ function useSourceContent(filters = {}) {
                 abortControllerRef.current.abort();
             }
         };
-    }, [fetchSourceContents]);
+    }, [fetchTransactions]);
     
     // Return hook interface
     return {
-        sourceContents,
+        transactions,
         isLoading,
         error,
         refetch
     };
 }
 
-export { useSourceContent };
+export { useTransactions };
 ```
 
 ### Hook Dependencies

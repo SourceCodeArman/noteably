@@ -1,0 +1,354 @@
+---
+description: Database schema, Supabase, and data modeling rules
+globs: **/*.sql, backend/apps/**/models.py
+alwaysApply: true
+---
+
+# Database & Supabase Rules
+
+## Schema Design Principles
+
+- **Use UUIDs**: All primary keys should be UUID type for distributed systems
+- **Add Timestamps**: Every table needs `created_at` and `updated_at`
+- **Row Level Security (RLS)**: Enable RLS on all user-facing tables
+- **Indexes**: Create indexes on foreign keys and frequently queried columns
+- **JSONB for Flexibility**: Use JSONB for structured but variable data
+
+## Core Tables
+
+### Jobs Table (Central Entity)
+
+```sql
+-- ✅ DO: Single table for upload tracking
+CREATE TABLE jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  
+  -- File information
+  filename VARCHAR(255) NOT NULL,
+  file_size_bytes BIGINT NOT NULL,
+  file_type VARCHAR(50) NOT NULL,
+  storage_url TEXT NOT NULL,  -- Cloudflare R2 URL
+  
+  -- Material selection (what user wants generated)
+  material_types TEXT[] NOT NULL CHECK (array_length(material_types, 1) > 0),
+  options JSONB DEFAULT '{}',
+  
+  -- Processing status
+  status VARCHAR(50) DEFAULT 'queued' 
+    CHECK (status IN ('queued', 'transcribing', 'generating', 'completed', 'failed')),
+  progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+  current_step VARCHAR(100),
+  
+  -- Relationships
+  transcription_id UUID REFERENCES transcriptions(id),
+  
+  -- Error tracking
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT NOW(),
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP
+);
+
+CREATE INDEX idx_jobs_user_id ON jobs(user_id);
+CREATE INDEX idx_jobs_status ON jobs(status);
+CREATE INDEX idx_jobs_created_at ON jobs(created_at DESC);
+
+-- RLS Policy: Users can only see their own jobs
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY jobs_select_policy ON jobs
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY jobs_insert_policy ON jobs
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY jobs_update_policy ON jobs
+  FOR UPDATE USING (auth.uid() = user_id);
+```
+
+### User Subscriptions
+
+```sql
+-- ✅ DO: Track subscription tier and usage limits
+CREATE TABLE user_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  
+  -- Subscription details
+  tier VARCHAR(20) DEFAULT 'free' CHECK (tier IN ('free', 'pro', 'enterprise')),
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'expired')),
+  
+  -- Limits (updated based on tier)
+  monthly_upload_limit INTEGER DEFAULT 5,
+  monthly_minutes_limit INTEGER DEFAULT 30,
+  max_file_size_mb INTEGER DEFAULT 100,
+  
+  -- Usage tracking (reset monthly)
+  uploads_this_month INTEGER DEFAULT 0,
+  minutes_used_this_month FLOAT DEFAULT 0,
+  usage_reset_date DATE DEFAULT CURRENT_DATE,
+  
+  -- Stripe integration
+  stripe_customer_id VARCHAR(255),
+  stripe_subscription_id VARCHAR(255),
+  subscription_started_at TIMESTAMP,
+  subscription_ends_at TIMESTAMP,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_subscriptions_user_id ON user_subscriptions(user_id);
+CREATE INDEX idx_user_subscriptions_tier ON user_subscriptions(tier);
+
+-- RLS: Users can only view their own subscription
+ALTER TABLE user_subscriptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY user_subscriptions_policy ON user_subscriptions
+  FOR ALL USING (auth.uid() = user_id);
+```
+
+### Generated Materials (Polymorphic Content)
+
+```sql
+-- ✅ DO: Use JSONB for different material structures
+CREATE TABLE generated_materials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id UUID REFERENCES jobs(id) ON DELETE CASCADE NOT NULL,
+  transcription_id UUID REFERENCES transcriptions(id),
+  
+  -- Material type and content
+  material_type VARCHAR(50) NOT NULL CHECK (material_type IN ('summary', 'notes', 'flashcards', 'quiz')),
+  content JSONB NOT NULL,
+  
+  -- Structure varies by type:
+  -- summary: {title, short, medium, long, key_points[]}
+  -- notes: {title, sections: [{heading, content, subsections[]}]}
+  -- flashcards: {cards: [{question, answer, difficulty, tags[]}]}
+  -- quiz: {questions: [{question, options[], correct, explanation}]}
+  
+  -- Generation metadata
+  gemini_model VARCHAR(50) NOT NULL,
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  generation_time_ms INTEGER,
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_materials_job_id ON generated_materials(job_id);
+CREATE INDEX idx_materials_type ON generated_materials(material_type);
+
+-- RLS: Access through job ownership
+ALTER TABLE generated_materials ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY materials_policy ON generated_materials
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM jobs 
+      WHERE jobs.id = job_id AND jobs.user_id = auth.uid()
+    )
+  );
+```
+
+## Django Model Patterns
+
+```python
+# ✅ DO: Match Supabase schema in Django models
+from django.db import models
+from django.contrib.postgres.fields import ArrayField
+import uuid
+
+class Job(models.Model):
+    """Central job tracking for upload-to-materials pipeline."""
+    
+    STATUS_CHOICES = [
+        ('queued', 'Queued'),
+        ('transcribing', 'Transcribing'),
+        ('generating', 'Generating'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.UUIDField(db_index=True)  # References Supabase auth.users
+    
+    # File info
+    filename = models.CharField(max_length=255)
+    file_size_bytes = models.BigIntegerField()
+    file_type = models.CharField(max_length=50)
+    storage_url = models.TextField()
+    
+    # Material selection
+    material_types = ArrayField(models.CharField(max_length=20))
+    options = models.JSONField(default=dict)
+    
+    # Status
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='queued', db_index=True)
+    progress = models.IntegerField(default=0)
+    current_step = models.CharField(max_length=100, blank=True)
+    
+    # Relations
+    transcription = models.ForeignKey('Transcription', null=True, blank=True, on_delete=models.SET_NULL)
+    
+    # Error tracking
+    error_message = models.TextField(blank=True)
+    retry_count = models.IntegerField(default=0)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'jobs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user_id', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"Job {self.id} - {self.filename} ({self.status})"
+```
+
+## Supabase Real-Time
+
+```python
+# ✅ DO: Use Supabase real-time for job status updates
+from supabase import create_client, Client
+
+supabase: Client = create_client(
+    os.getenv('SUPABASE_URL'),
+    os.getenv('SUPABASE_SERVICE_ROLE_KEY')  # Use service role for backend
+)
+
+def subscribe_to_job_updates(job_id: str, callback):
+    """Subscribe to real-time updates for a job."""
+    
+    def handle_update(payload):
+        if payload['eventType'] == 'UPDATE':
+            job_data = payload['new']
+            callback(job_data)
+    
+    # Subscribe to job table updates
+    subscription = (
+        supabase
+        .table('jobs')
+        .on('UPDATE', handle_update)
+        .eq('id', job_id)
+        .subscribe()
+    )
+    
+    return subscription
+```
+
+## Data Validation
+
+```python
+# ✅ DO: Validate material types and subscription limits
+VALID_MATERIAL_TYPES = {'summary', 'notes', 'flashcards', 'quiz'}
+
+def validate_material_selection(material_types: list[str]) -> bool:
+    """Ensure user selected valid material types."""
+    if not material_types:
+        raise ValueError("Must select at least one material type")
+    
+    if not set(material_types).issubset(VALID_MATERIAL_TYPES):
+        invalid = set(material_types) - VALID_MATERIAL_TYPES
+        raise ValueError(f"Invalid material types: {invalid}")
+    
+    return True
+
+def check_subscription_limits(user_id: str, file_duration_minutes: float) -> bool:
+    """Check if user can upload within their subscription limits."""
+    subscription = supabase.table('user_subscriptions').select('*').eq('user_id', user_id).single().execute()
+    
+    if not subscription.data:
+        raise ValueError("No subscription found")
+    
+    # Check upload limit
+    if subscription.data['uploads_this_month'] >= subscription.data['monthly_upload_limit']:
+        raise QuotaExceededError(f"Monthly upload limit reached ({subscription.data['monthly_upload_limit']} uploads)")
+    
+    # Check minutes limit
+    total_minutes = subscription.data['minutes_used_this_month'] + file_duration_minutes
+    if total_minutes > subscription.data['monthly_minutes_limit']:
+        raise QuotaExceededError(f"Monthly minutes limit exceeded ({subscription.data['monthly_minutes_limit']} min)")
+    
+    return True
+```
+
+## Migrations
+
+```sql
+-- ✅ DO: Version control schema changes with migrations
+-- Migration: 001_initial_schema.sql
+
+BEGIN;
+
+-- Create jobs table
+CREATE TABLE jobs (...);
+
+-- Create user_subscriptions table
+CREATE TABLE user_subscriptions (...);
+
+-- Create transcriptions table
+CREATE TABLE transcriptions (...);
+
+-- Create generated_materials table
+CREATE TABLE generated_materials (...);
+
+-- Create analytics_events table (optional)
+CREATE TABLE analytics_events (...);
+
+-- Set up RLS policies
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+-- ... (policies)
+
+COMMIT;
+```
+
+## Query Optimization
+
+```python
+# ✅ DO: Use efficient queries with proper indexing
+from django.db.models import Prefetch, Count, Q
+
+def get_user_jobs_with_materials(user_id: str, limit: int = 20):
+    """Get user jobs with related materials (optimized)."""
+    return (
+        Job.objects
+        .filter(user_id=user_id)
+        .select_related('transcription')  # JOIN on transcription
+        .prefetch_related(
+            Prefetch(
+                'generated_materials',
+                queryset=GeneratedMaterial.objects.order_by('material_type')
+            )
+        )
+        .annotate(material_count=Count('generated_materials'))
+        .order_by('-created_at')
+        [:limit]
+    )
+
+# ❌ DON'T: N+1 queries
+jobs = Job.objects.filter(user_id=user_id)
+for job in jobs:
+    materials = job.generated_materials.all()  # Separate query per job!
+```
+
+## Backup and Retention
+
+- **Supabase Automated Backups**: Daily snapshots (Pro tier)
+- **File Retention**: 
+  - Free tier: 30 days, then delete from R2
+  - Pro tier: Unlimited
+- **Database Cleanup**: 
+  - Archive completed jobs older than 90 days
+  - Delete failed jobs after retry attempts exhausted
+  - Remove analytics events older than 1 year

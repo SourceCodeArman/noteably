@@ -21,7 +21,7 @@ The backend must always be started using Docker infrastructure:
 Reason:
 The backend environment depends on Docker-based services such as Postgres, Redis, Celery, and networking. Running Django directly locally will result in inconsistent environments, failed dependencies, and invalid dev setup.
 
-This rule enforces Django-specific development guidelines and best practices for the Noteably platform.
+This rule enforces Django-specific development guidelines and best practices for the Cashly platform.
 
 ## App Registration and Configuration
 
@@ -45,11 +45,9 @@ INSTALLED_APPS = [
     
     # Local apps
     'apps.accounts',
-    'apps.ingestion',
-    'apps.transcription',
-    'apps.generation',
-    'apps.storage',
-    'apps.tasks',
+    'apps.transactions',
+    'apps.goals',
+    'apps.budgets',
     'apps.analytics',
 ]
 
@@ -75,20 +73,16 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-router.register(r'sources', views.SourceContentViewSet)
-router.register(r'transcriptions', views.TranscriptionViewSet)
-router.register(r'generated-content', views.GeneratedContentViewSet)
-router.register(r'summaries', views.SummaryViewSet)
-router.register(r'notes', views.NotesViewSet)
-router.register(r'flashcards', views.FlashcardViewSet)
-router.register(r'quizzes', views.QuizViewSet)
+router.register(r'transactions', views.TransactionViewSet)
+router.register(r'accounts', views.AccountViewSet)
+router.register(r'goals', views.GoalViewSet)
+router.register(r'budgets', views.BudgetViewSet)
 
 app_name = 'api'
 urlpatterns = [
     path('', include(router.urls)),
-    path('sources/<int:source_id>/transcribe/', views.start_transcription, name='start-transcription'),
-    path('transcriptions/<int:transcription_id>/generate/', views.generate_content, name='generate-content'),
-    path('generated-content/<int:content_id>/refine/', views.refine_content, name='refine-content'),
+    path('accounts/<int:account_id>/sync/', views.sync_account, name='sync-account'),
+    path('transactions/<int:transaction_id>/categorize/', views.categorize_transaction, name='categorize'),
 ]
 
 # ✅ Good main URL configuration in config/urls.py
@@ -114,73 +108,60 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinLengthValidator, MaxLengthValidator
 
-class SourceContent(models.Model):
-    """Represents uploaded content from various sources (YouTube, files, text)."""
-    SOURCE_TYPES = [
-        ('youtube', 'YouTube'),
-        ('file', 'File Upload'),
-        ('text', 'Text Input'),
-    ]
-    
+class Transaction(models.Model):
     # Fields
-    title = models.CharField(
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Transaction amount (negative for expenses, positive for income)"
+    )
+    merchant_name = models.CharField(
         max_length=200,
         validators=[MinLengthValidator(2), MaxLengthValidator(200)],
-        help_text="Content title (2-200 characters)"
+        help_text="Merchant or transaction name (2-200 characters)"
     )
-    source_type = models.CharField(
-        max_length=20,
-        choices=SOURCE_TYPES,
-        help_text="Type of content source"
-    )
-    source_url = models.URLField(blank=True, null=True, help_text="YouTube URL or external link")
-    file_reference = models.ForeignKey(
-        'storage.FileReference',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='source_contents',
-        help_text="Reference to uploaded file"
-    )
-    raw_text = models.TextField(blank=True, help_text="Direct text input")
-    metadata = models.JSONField(default=dict, help_text="Extracted metadata (duration, language, etc.)")
+    description = models.TextField(blank=True)
+    date = models.DateField()
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='source_contents'
+        related_name='transactions'
     )
-    status = models.CharField(
-        max_length=20,
-        default='pending',
-        choices=[
-            ('pending', 'Pending'),
-            ('processing', 'Processing'),
-            ('completed', 'Completed'),
-            ('failed', 'Failed'),
-        ]
+    account = models.ForeignKey(
+        'accounts.Account',
+        on_delete=models.CASCADE,
+        related_name='transactions'
+    )
+    category = models.ForeignKey(
+        'transactions.Category',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transactions'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     # Meta
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Source Content'
-        verbose_name_plural = 'Source Contents'
+        ordering = ['-date', '-created_at']
+        verbose_name = 'Transaction'
+        verbose_name_plural = 'Transactions'
         indexes = [
-            models.Index(fields=['user', 'status']),
-            models.Index(fields=['source_type', 'created_at']),
+            models.Index(fields=['user', 'date']),
+            models.Index(fields=['account', 'date']),
+            models.Index(fields=['category', 'date']),
         ]
     
     # Methods
     def __str__(self):
-        return f"{self.title} ({self.source_type})"
+        return f"{self.merchant_name} - {self.amount}"
     
-    def has_transcription(self):
-        return hasattr(self, 'transcription') and self.transcription.status == 'completed'
+    def is_expense(self):
+        return self.amount < 0
     
-    def get_duration(self):
-        return self.metadata.get('duration', 0)
+    def is_income(self):
+        return self.amount > 0
 ```
 
 ### Model Managers
@@ -188,31 +169,28 @@ Use custom managers for complex queries:
 
 ```python
 # ✅ Good manager usage
-class SourceContentManager(models.Manager):
+class TransactionManager(models.Manager):
     def for_user(self, user):
         return self.filter(user=user)
     
-    def by_source_type(self, source_type):
-        return self.filter(source_type=source_type)
+    def expenses(self):
+        return self.filter(amount__lt=0)
     
-    def completed(self):
-        return self.filter(status='completed')
-    
-    def pending(self):
-        return self.filter(status='pending')
+    def income(self):
+        return self.filter(amount__gt=0)
     
     def recent(self, days=30):
         from django.utils import timezone
         since = timezone.now() - timezone.timedelta(days=days)
-        return self.filter(created_at__gte=since)
+        return self.filter(date__gte=since)
     
-    def with_transcriptions(self):
-        return self.filter(transcription__status='completed')
+    def by_category(self, category):
+        return self.filter(category=category)
 
-class SourceContent(models.Model):
+class Transaction(models.Model):
     # ... fields ...
     
-    objects = SourceContentManager()
+    objects = TransactionManager()
     
     class Meta:
         # ... meta options ...
@@ -229,59 +207,48 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Transaction, Category
 
-class SourceContentListSerializer(serializers.ModelSerializer):
-    transcription_status = serializers.CharField(source='transcription.status', read_only=True)
-    duration_formatted = serializers.SerializerMethodField()
+class TransactionListSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    formatted_amount = serializers.SerializerMethodField()
     
     class Meta:
-        model = SourceContent
-        fields = ['id', 'title', 'source_type', 'duration_formatted', 'status', 'transcription_status', 'created_at']
+        model = Transaction
+        fields = ['id', 'merchant_name', 'amount', 'formatted_amount', 'date', 'category_name', 'created_at']
         read_only_fields = ['id', 'created_at']
     
-    def get_duration_formatted(self, obj):
-        duration = obj.get_duration()
-        if duration:
-            minutes = duration // 60
-            seconds = duration % 60
-            return f"{minutes}m {seconds}s"
-        return None
+    def get_formatted_amount(self, obj):
+        return f"${abs(obj.amount):,.2f}"
 
-class SourceContentDetailSerializer(serializers.ModelSerializer):
-    transcription_text = serializers.CharField(source='transcription.text', read_only=True)
-    file_url = serializers.CharField(source='file_reference.url', read_only=True)
-    metadata_display = serializers.SerializerMethodField()
+class TransactionDetailSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    account_name = serializers.CharField(source='account.institution_name', read_only=True)
+    formatted_amount = serializers.SerializerMethodField()
     
     class Meta:
-        model = SourceContent
+        model = Transaction
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at', 'status']
+        read_only_fields = ['id', 'created_at', 'updated_at']
     
-    def get_metadata_display(self, obj):
-        return {
-            'duration': obj.get_duration(),
-            'language': obj.metadata.get('language', 'unknown'),
-            'file_size': obj.metadata.get('file_size', 0),
-        }
+    def get_formatted_amount(self, obj):
+        return f"${abs(obj.amount):,.2f}"
     
-    def validate_title(self, value):
-        if len(value) < 2:
-            raise serializers.ValidationError("Title must be at least 2 characters")
+    def validate_amount(self, value):
+        if value == 0:
+            raise serializers.ValidationError("Transaction amount cannot be zero")
         return value
     
-    def validate_source_type(self, value):
-        valid_types = ['youtube', 'file', 'text']
-        if value not in valid_types:
-            raise serializers.ValidationError(f"Source type must be one of {valid_types}")
+    def validate_merchant_name(self, value):
+        if len(value) < 2:
+            raise serializers.ValidationError("Merchant name must be at least 2 characters")
         return value
 
-class SourceContentCreateSerializer(serializers.ModelSerializer):
+class TransactionCreateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SourceContent
-        fields = ['title', 'source_type', 'source_url', 'file_reference', 'raw_text', 'metadata']
+        model = Transaction
+        fields = ['merchant_name', 'amount', 'date', 'description', 'category', 'account']
     
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
-        validated_data['status'] = 'pending'
         return super().create(validated_data)
 ```
 
@@ -303,69 +270,62 @@ from .serializers import TransactionListSerializer, TransactionDetailSerializer,
 from .tasks import categorize_transaction_task
 from .permissions import IsOwnerOrReadOnly
 
-class SourceContentViewSet(viewsets.ModelViewSet):
-    serializer_class = SourceContentListSerializer
+class TransactionViewSet(viewsets.ModelViewSet):
+    serializer_class = TransactionListSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     
     def get_queryset(self):
-        queryset = SourceContent.objects.for_user(self.request.user)
+        queryset = Transaction.objects.for_user(self.request.user)
         
         # Filtering
-        source_type = self.request.query_params.get('source_type')
-        if source_type:
-            queryset = queryset.filter(source_type=source_type)
-        
-        status = self.request.query_params.get('status')
-        if status:
-            queryset = queryset.filter(status=status)
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category_id=category)
         
         date_from = self.request.query_params.get('date_from')
         date_to = self.request.query_params.get('date_to')
         if date_from:
-            queryset = queryset.filter(created_at__gte=date_from)
+            queryset = queryset.filter(date__gte=date_from)
         if date_to:
-            queryset = queryset.filter(created_at__lte=date_to)
+            queryset = queryset.filter(date__lte=date_to)
         
         return queryset
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
-            return SourceContentDetailSerializer
+            return TransactionDetailSerializer
         elif self.action == 'create':
-            return SourceContentCreateSerializer
+            return TransactionCreateSerializer
         return self.serializer_class
     
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
     
     @action(detail=True, methods=['post'])
-    def transcribe(self, request, pk=None):
-        """Start transcription process for source content."""
-        source_content = self.get_object()
-        from apps.tasks.tasks import transcribe_content_task
+    def categorize(self, request, pk=None):
+        transaction = self.get_object()
+        category_id = request.data.get('category_id')
         
-        if source_content.status != 'completed':
+        if not category_id:
             return Response(
-                {'error': 'Source content must be completed before transcription'},
+                {'error': 'Category ID required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        transcribe_content_task.delay(source_content.id)
+        transaction.category_id = category_id
+        transaction.save()
         
-        return Response({'status': 'transcription_started', 'source_id': source_content.id})
+        return Response({'status': 'categorized', 'category_id': category_id})
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        user_sources = self.get_queryset()
+        user_transactions = self.get_queryset()
         stats = {
-            'total': user_sources.count(),
-            'by_type': {
-                'youtube': user_sources.filter(source_type='youtube').count(),
-                'file': user_sources.filter(source_type='file').count(),
-                'text': user_sources.filter(source_type='text').count(),
-            },
-            'completed': user_sources.filter(status='completed').count(),
-            'pending': user_sources.filter(status='pending').count(),
+            'total': user_transactions.count(),
+            'expenses': user_transactions.expenses().count(),
+            'income': user_transactions.income().count(),
+            'total_expenses': sum(t.amount for t in user_transactions.expenses()),
+            'total_income': sum(t.amount for t in user_transactions.income()),
         }
         return Response(stats)
 ```
@@ -385,106 +345,100 @@ import logging
 logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def transcribe_content_task(self, source_content_id):
+def sync_account_transactions(self, account_id):
     """
-    Transcribe audio/video content from source.
+    Sync transactions from Plaid for a connected account.
     
     Args:
-        source_content_id (int): ID of the SourceContent instance to transcribe
+        account_id (int): ID of the Account instance to sync
         
     Returns:
         str: Success message or raises exception
     """
     try:
-        from apps.ingestion.models import SourceContent
-        from apps.transcription.models import Transcription
-        from apps.transcription.provider_selector import select_provider
-        from apps.transcription.whisper_client import transcribe_with_whisper
+        from .models import Account, Transaction
+        from .plaid_utils import fetch_transactions, normalize_plaid_transaction
         
-        source_content = SourceContent.objects.get(id=source_content_id)
+        account = Account.objects.get(id=account_id)
         
-        # Update status
-        source_content.status = 'processing'
-        source_content.save()
+        # Fetch transactions from Plaid
+        logger.info(f"Starting transaction sync for account {account_id}")
+        plaid_transactions = fetch_transactions(account.plaid_access_token)
         
-        logger.info(f"Starting transcription for source content {source_content_id}")
+        # Process and save transactions
+        created_count = 0
+        for plaid_txn in plaid_transactions:
+            transaction_data = normalize_plaid_transaction(plaid_txn, account)
+            
+            # Create or update transaction
+            transaction, created = Transaction.objects.update_or_create(
+                plaid_transaction_id=plaid_txn['transaction_id'],
+                defaults=transaction_data
+            )
+            
+            if created:
+                created_count += 1
         
-        # Select transcription provider
-        provider = select_provider(
-            content_type=source_content.source_type,
-            duration=source_content.get_duration()
-        )
+        # Update last sync time
+        account.last_synced_at = timezone.now()
+        account.save()
         
-        # Transcribe content
-        transcription_result = transcribe_with_whisper(
-            file_reference=source_content.file_reference,
-            language=source_content.metadata.get('language')
-        )
+        logger.info(f"Successfully synced {created_count} new transactions for account {account_id}")
+        return f"Account {account_id} synced successfully, {created_count} new transactions"
         
-        # Create transcription record
-        transcription, created = Transcription.objects.update_or_create(
-            source_content=source_content,
-            defaults={
-                'text': transcription_result['text'],
-                'status': 'completed',
-                'provider': provider,
-                'metadata': transcription_result.get('metadata', {}),
-            }
-        )
-        
-        # Update source content status
-        source_content.status = 'completed'
-        source_content.save()
-        
-        logger.info(f"Successfully transcribed source content {source_content_id}")
-        return f"Source content {source_content_id} transcribed successfully"
-        
-    except SourceContent.DoesNotExist:
-        logger.error(f"Source content {source_content_id} not found")
+    except Account.DoesNotExist:
+        logger.error(f"Account {account_id} not found")
         raise
     except Exception as exc:
-        logger.error(f"Error transcribing source content {source_content_id}: {exc}")
+        logger.error(f"Error syncing account {account_id}: {exc}")
         self.retry(countdown=60, exc=exc)
 
-@shared_task(bind=True, max_retries=3)
-def generate_study_materials_task(self, transcription_id, content_types):
-    """Generate study materials (summaries, notes, flashcards, quizzes) from transcription."""
+@shared_task
+def categorize_transaction_task(transaction_id):
+    """Automatically categorize a transaction using ML."""
     try:
-        from apps.transcription.models import Transcription
-        from apps.generation.summary_generator import generate_summary
-        from apps.generation.notes_generator import generate_notes
-        from apps.generation.flashcard_generator import generate_flashcards
-        from apps.generation.quiz_generator import generate_quiz
+        from .models import Transaction
+        from .categorization import auto_categorize
         
-        transcription = Transcription.objects.get(id=transcription_id)
+        transaction = Transaction.objects.get(id=transaction_id)
         
-        results = {}
+        # Auto-categorize if not already categorized
+        if not transaction.category:
+            category = auto_categorize(transaction)
+            if category:
+                transaction.category = category
+                transaction.save()
+                logger.info(f"Auto-categorized transaction {transaction_id} as {category.name}")
         
-        if 'summary' in content_types:
-            summary = generate_summary(transcription.text, length='medium')
-            results['summary'] = summary
-        
-        if 'notes' in content_types:
-            notes = generate_notes(transcription.text, style='outline')
-            results['notes'] = notes
-        
-        if 'flashcards' in content_types:
-            flashcards = generate_flashcards(transcription.text, count=10)
-            results['flashcards'] = flashcards
-        
-        if 'quiz' in content_types:
-            quiz = generate_quiz(transcription.text, type='multiple_choice', count=5)
-            results['quiz'] = quiz
-        
-        logger.info(f"Successfully generated study materials for transcription {transcription_id}")
-        return results
-        
-    except Transcription.DoesNotExist:
-        logger.error(f"Transcription {transcription_id} not found")
-        raise
+    except Transaction.DoesNotExist:
+        logger.error(f"Transaction {transaction_id} not found")
     except Exception as exc:
-        logger.error(f"Failed to generate study materials for transcription {transcription_id}: {exc}")
-        self.retry(countdown=60, exc=exc)
+        logger.error(f"Failed to categorize transaction {transaction_id}: {exc}")
+
+@shared_task
+def send_goal_milestone_notification(goal_id, milestone_type):
+    """Send email notification when goal milestone is reached."""
+    try:
+        from apps.goals.models import Goal
+        goal = Goal.objects.get(id=goal_id)
+        
+        milestone_messages = {
+            '25_percent': f'Congratulations! You\'ve reached 25% of your goal "{goal.name}".',
+            '50_percent': f'Congratulations! You\'ve reached 50% of your goal "{goal.name}".',
+            '75_percent': f'Congratulations! You\'ve reached 75% of your goal "{goal.name}".',
+            'completed': f'Amazing! You\'ve completed your goal "{goal.name}"!',
+        }
+        
+        send_mail(
+            subject='Goal Milestone Reached!',
+            message=milestone_messages.get(milestone_type, 'Goal milestone reached'),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[goal.user.email],
+            fail_silently=False,
+        )
+    except Exception as exc:
+        logger.error(f"Failed to send notification for goal {goal_id}: {exc}")
+        raise
 ```
 
 ## File Upload Guidelines
@@ -501,70 +455,41 @@ from apps.accounts.models import Account
 from .utils import validate_plaid_token, encrypt_token
 from .tasks import sync_account_transactions
 
-class SourceContentUploadView(APIView):
+class AccountConnectionView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        source_type = request.data.get('source_type')
-        title = request.data.get('title')
-        source_url = request.data.get('source_url')
-        file = request.FILES.get('file')
-        raw_text = request.data.get('raw_text')
+        plaid_token = request.data.get('plaid_access_token')
+        institution_id = request.data.get('institution_id')
         
-        if not source_type:
+        if not plaid_token or not institution_id:
             return Response(
-                {'error': 'Source type is required'},
+                {'error': 'Plaid token and institution ID required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validate source type specific requirements
-        if source_type == 'youtube' and not source_url:
+        # Validate Plaid token
+        if not validate_plaid_token(plaid_token):
             return Response(
-                {'error': 'YouTube URL required for youtube source type'},
+                {'error': 'Invalid Plaid token'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if source_type == 'file' and not file:
-            return Response(
-                {'error': 'File required for file source type'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Create account record with encrypted token
+        account = Account.objects.create(
+            user=request.user,
+            institution_name=institution_id,
+            plaid_access_token=encrypt_token(plaid_token),  # Encrypt before storing
+            is_active=True
+        )
         
-        if source_type == 'text' and not raw_text:
-            return Response(
-                {'error': 'Text content required for text source type'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Create source content record
-        from apps.ingestion.models import SourceContent
-        from apps.storage.file_manager import store_file
-        
-        source_content_data = {
-            'user': request.user,
-            'title': title or 'Untitled',
-            'source_type': source_type,
-            'source_url': source_url,
-            'raw_text': raw_text,
-            'status': 'pending',
-        }
-        
-        # Handle file upload
-        if file:
-            file_reference = store_file(file, user=request.user)
-            source_content_data['file_reference'] = file_reference
-        
-        source_content = SourceContent.objects.create(**source_content_data)
-        
-        # Start processing (transcription if needed)
-        if source_type in ['youtube', 'file']:
-            from apps.tasks.tasks import transcribe_content_task
-            transcribe_content_task.delay(source_content.id)
+        # Start syncing transactions
+        sync_account_transactions.delay(account.id)
         
         return Response({
-            'source_id': source_content.id,
-            'status': 'created',
-            'source_type': source_type
+            'account_id': account.id,
+            'status': 'connected',
+            'institution_name': institution_id
         }, status=status.HTTP_201_CREATED)
 ```
 
@@ -597,42 +522,28 @@ def custom_exception_handler(exc, context):
     return response
 
 # ✅ Good validation error handling
-class SourceContentCreateSerializer(serializers.ModelSerializer):
-    def validate_title(self, value):
-        if len(value) < 2:
+class TransactionCreateSerializer(serializers.ModelSerializer):
+    def validate_amount(self, value):
+        if value == 0:
             raise serializers.ValidationError({
-                'title': 'Title must be at least 2 characters long'
+                'amount': 'Transaction amount cannot be zero'
             })
         return value
     
-    def validate_source_type(self, value):
-        valid_types = ['youtube', 'file', 'text']
-        if value not in valid_types:
+    def validate_merchant_name(self, value):
+        if len(value) < 2:
             raise serializers.ValidationError({
-                'source_type': f'Source type must be one of {valid_types}'
+                'merchant_name': 'Merchant name must be at least 2 characters long'
             })
         return value
     
     def validate(self, data):
-        # Ensure file_reference belongs to user if provided
-        file_reference = data.get('file_reference')
-        if file_reference and file_reference.user != self.context['request'].user:
+        # Ensure account belongs to user
+        account = data.get('account')
+        if account and account.user != self.context['request'].user:
             raise serializers.ValidationError({
-                'file_reference': 'File reference does not belong to user'
+                'account': 'Account does not belong to user'
             })
-        
-        # Validate source type specific requirements
-        source_type = data.get('source_type')
-        if source_type == 'youtube' and not data.get('source_url'):
-            raise serializers.ValidationError({
-                'source_url': 'YouTube URL is required for youtube source type'
-            })
-        
-        if source_type == 'text' and not data.get('raw_text'):
-            raise serializers.ValidationError({
-                'raw_text': 'Text content is required for text source type'
-            })
-        
         return data
 ```
 

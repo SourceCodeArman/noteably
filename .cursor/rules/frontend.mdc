@@ -1,0 +1,438 @@
+---
+description: Frontend development rules for Next.js, React, TypeScript, and WebSocket integration
+globs: frontend/**/*.{ts,tsx,js,jsx}
+alwaysApply: true
+---
+
+# Frontend Development Rules
+
+## Next.js & React Conventions
+
+- **File Structure:**
+  ```
+  frontend/src/
+  ├── app/              # Next.js 14 App Router
+  ├── components/       # Reusable React components
+  ├── hooks/            # Custom React hooks
+  ├── services/         # API clients and WebSocket
+  ├── types/            # TypeScript interfaces
+  └── lib/              # Utilities and helpers
+  ```
+
+- **TypeScript:**
+  - Always use TypeScript for type safety
+  - Define interfaces for all data structures
+  - Use strict mode
+  - Avoid `any`, use `unknown` when necessary
+
+## Component Patterns
+
+### Upload Component (Single-Page Flow)
+
+```tsx
+// ✅ DO: Manage upload state with WebSocket streaming
+'use client';
+
+import { useState } from 'react';
+import { useWebSocket } from '@/hooks/useWebSocket';
+
+interface UploadState {
+  status: 'idle' | 'uploading' | 'transcribing' | 'generating' | 'complete' | 'error';
+  transcript: string;
+  transcriptProgress: number;
+  materials: {
+    summary?: Summary;
+    notes?: Notes;
+    flashcards?: Flashcard[];
+    quiz?: Quiz;
+  };
+  error?: string;
+}
+
+export function UploadPage() {
+  const [state, setState] = useState<UploadState>({
+    status: 'idle',
+    transcript: '',
+    transcriptProgress: 0,
+    materials: {}
+  });
+  
+  const [selectedMaterials, setSelectedMaterials] = useState<MaterialType[]>([]);
+  const { connect, disconnect } = useWebSocket();
+  
+  const handleUpload = async (file: File) => {
+    setState(prev => ({ ...prev, status: 'uploading' }));
+    
+    // Upload file with material selection
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('material_types', JSON.stringify(selectedMaterials));
+    
+    const response = await fetch('/api/process', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const { job_id } = await response.json();
+    
+    // Connect to WebSocket for streaming updates
+    connect(job_id, handleWebSocketMessage);
+  };
+  
+  const handleWebSocketMessage = (data: WebSocketEvent) => {
+    switch (data.type) {
+      case 'transcript_partial':
+        setState(prev => ({
+          ...prev,
+          status: 'transcribing',
+          transcript: data.text,
+          transcriptProgress: data.progress
+        }));
+        break;
+        
+      case 'material_generated':
+        setState(prev => ({
+          ...prev,
+          status: 'generating',
+          materials: {
+            ...prev.materials,
+            [data.material_type]: data.content
+          }
+        }));
+        break;
+        
+      case 'complete':
+        setState({
+          status: 'complete',
+          transcript: data.transcript,
+          transcriptProgress: 100,
+          materials: data.materials
+        });
+        break;
+        
+      case 'error':
+        setState(prev => ({
+          ...prev,
+          status: 'error',
+          error: data.error_message
+        }));
+        break;
+    }
+  };
+  
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      {/* Upload UI */}
+      {state.status === 'idle' && (
+        <UploadDropzone
+          onUpload={handleUpload}
+          selectedMaterials={selectedMaterials}
+          onMaterialSelect={setSelectedMaterials}
+        />
+      )}
+      
+      {/* Streaming transcript */}
+      {state.status === 'transcribing' && (
+        <TranscriptStream
+          transcript={state.transcript}
+          progress={state.transcriptProgress}
+        />
+      )}
+      
+      {/* Generated materials */}
+      {(state.status === 'generating' || state.status === 'complete') && (
+        <MaterialViewer
+          transcript={state.transcript}
+          materials={state.materials}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+## Custom Hooks
+
+### WebSocket Hook
+
+```tsx
+// ✅ DO: Abstract WebSocket logic into reusable hook
+import { useEffect, useRef, useCallback } from 'react';
+
+export function useWebSocket() {
+  const ws = useRef<WebSocket | null>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
+  
+  const connect = useCallback((jobId: string, onMessage: (data: any) => void) => {
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/api/stream/${jobId}`;
+    ws.current = new WebSocket(wsUrl);
+    
+    ws.current.onopen = () => {
+      console.log('WebSocket connected');
+      reconnectAttempts.current = 0;
+    };
+    
+    ws.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      onMessage(data);
+    };
+    
+    ws.current.onclose = () => {
+      // Attempt reconnection
+      if (reconnectAttempts.current < maxReconnectAttempts) {
+        reconnectAttempts.current += 1;
+        setTimeout(() => connect(jobId, onMessage), 2000 * reconnectAttempts.current);
+      }
+    };
+    
+    ws.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+  }, []);
+  
+  const disconnect = useCallback(() => {
+    ws.current?.close();
+    ws.current = null;
+  }, []);
+  
+  const send = useCallback((data: any) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(data));
+    }
+  }, []);
+  
+  useEffect(() => {
+    return () => disconnect();
+  }, [disconnect]);
+  
+  return { connect, disconnect, send };
+}
+```
+
+## TypeScript Interfaces
+
+```typescript
+// ✅ DO: Define complete type definitions
+export interface Job {
+  id: string;
+  user_id: string;
+  filename: string;
+  file_size_bytes: number;
+  file_type: string;
+  storage_url: string;
+  material_types: MaterialType[];
+  status: JobStatus;
+  progress: number;
+  current_step: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export type MaterialType = 'summary' | 'notes' | 'flashcards' | 'quiz';
+export type JobStatus = 'queued' | 'transcribing' | 'generating' | 'completed' | 'failed';
+
+export interface Summary {
+  title: string;
+  short: string;
+  medium: string;
+  long: string;
+  key_points: string[];
+}
+
+export interface Notes {
+  title: string;
+  sections: NoteSection[];
+}
+
+export interface NoteSection {
+  heading: string;
+  content: string;
+  subsections?: NoteSection[];
+}
+
+export interface Flashcard {
+  question: string;
+  answer: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  tags: string[];
+}
+
+export interface Quiz {
+  questions: QuizQuestion[];
+}
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+}
+
+export interface WebSocketEvent {
+  type: 'transcript_partial' | 'transcript_complete' | 'material_generating' | 'material_generated' | 'complete' | 'error';
+  [key: string]: any;
+}
+```
+
+## API Client
+
+```typescript
+// ✅ DO: Centralize API calls with error handling
+class APIClient {
+  private baseURL: string;
+  
+  constructor() {
+    this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  }
+  
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const token = localStorage.getItem('auth_token');
+    
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: token ? `Bearer ${token}` : '',
+        ...options.headers
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 402) {
+        throw new PaymentRequiredError('Upgrade to Pro for this feature');
+      }
+      throw new Error(`API error: ${response.statusText}`);
+    }
+    
+    return response.json();
+  }
+  
+  async processUpload(file: File, materialTypes: MaterialType[]) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('material_types', JSON.stringify(materialTypes));
+    
+    return this.request<{ job_id: string }>('/api/process', {
+      method: 'POST',
+      body: formData,
+      headers: {} // Let browser set Content-Type for FormData
+    });
+  }
+  
+  async exportToPDF(contentId: string, materialTypes: MaterialType[]) {
+    return this.request<{ download_url: string }>('/api/export', {
+      method: 'POST',
+      body: JSON.stringify({
+        content_id: contentId,
+        material_types: materialTypes,
+        format: 'pdf'
+      })
+    });
+  }
+}
+
+export const api = new APIClient();
+```
+
+## Styling with Tailwind
+
+```tsx
+// ✅ DO: Use Tailwind utilities with semantic components
+export function UploadDropzone({ onUpload }: { onUpload: (file: File) => void }) {
+  const [isDragging, setIsDragging] = useState(false);
+  
+  return (
+    <div
+      className={cn(
+        'border-2 border-dashed rounded-lg p-12 text-center transition-colors',
+        isDragging
+          ? 'border-blue-500 bg-blue-50'
+          : 'border-gray-300 hover:border-gray-400'
+      )}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file) onUpload(file);
+      }}
+    >
+      <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <p className="mt-4 text-sm text-gray-600">
+        Drag and drop your audio/video file here, or click to browse
+      </p>
+      <p className="mt-2 text-xs text-gray-500">
+        Supports MP3, MP4, WAV, M4A, WebM • Max 100MB (Free) / 500MB (Pro)
+      </p>
+    </div>
+  );
+}
+```
+
+## Performance Optimization
+
+- Use `React.memo()` for expensive components
+- Implement virtualization for long lists (react-window)
+- Lazy load heavy components with `next/dynamic`
+- Use `next/image` for optimized images
+- Implement pagination for content history
+- Debounce search inputs
+- Use SWR or TanStack Query for data fetching and caching
+
+## Error Handling
+
+```tsx
+// ✅ DO: Show user-friendly error messages
+export function ErrorBoundary({ error }: { error: Error }) {
+  if (error instanceof PaymentRequiredError) {
+    return (
+      <div className="rounded-lg bg-yellow-50 p-4">
+        <h3 className="text-sm font-medium text-yellow-800">
+          Upgrade Required
+        </h3>
+        <p className="mt-2 text-sm text-yellow-700">
+          {error.message}
+        </p>
+        <button className="mt-4 text-sm font-medium text-yellow-800 hover:text-yellow-900">
+          Upgrade to Pro →
+        </button>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="rounded-lg bg-red-50 p-4">
+      <h3 className="text-sm font-medium text-red-800">
+        Something went wrong
+      </h3>
+      <p className="mt-2 text-sm text-red-700">
+        {error.message}
+      </p>
+      <button
+        className="mt-4 text-sm font-medium text-red-800 hover:text-red-900"
+        onClick={() => window.location.reload()}
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+```
+
+## Accessibility
+
+- Use semantic HTML elements
+- Add ARIA labels to interactive elements
+- Ensure keyboard navigation works
+- Maintain color contrast ratios (WCAG AA)
+- Add alt text to images
+- Use focus indicators
+- Test with screen readers
