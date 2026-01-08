@@ -200,6 +200,7 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+.cursor/
 
 # Marimo
 marimo/_static/
@@ -214,3 +215,7 @@ frontend/*.local
 frontend/.vite/
 frontend/.env.local
 frontend/.env.production
+
+# Taskman
+taskman/
+TASKS.md
